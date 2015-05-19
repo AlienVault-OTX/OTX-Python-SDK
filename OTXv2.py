@@ -27,7 +27,7 @@ class BadRequest(Exception):
 		return repr(self.value)
 
 class OTXv2(object):
-	def __init__(self, key, server="http://otx.alienvault.com/"):
+	def __init__(self, key, server="http://otx.alienvault.com"):
 		self.key = key
 		self.server = server 
 
