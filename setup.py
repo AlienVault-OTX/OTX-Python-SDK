@@ -2,11 +2,11 @@
 
 from distutils.core import setup
 
-setup(name='alientvault',
+setup(name='OTXv2',
       version='1.0',
       description='AlienVault OTX API',
       author='AlienVault Team',
-      author_email='hello@alienvault.com',
+      author_email='otx@alienvault.com',
       url='https://github.com/AlienVault-Labs/OTX-Python-SDK',
       py_modules=['OTXv2'],
       )
