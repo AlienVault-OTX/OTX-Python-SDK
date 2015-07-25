@@ -46,9 +46,9 @@ class OTXv2(object):
 		json_data = json.loads(data)
 		return json_data
 
-	def getall(self):
+	def getall(self, limit=20):
 		pulses = []
-		next = "%s/api/v1/pulses/subscribed?limit=20" % self.server
+		next = "%s/api/v1/pulses/subscribed?limit=%d" % (self.server, limit)
 		while next:
 			json_data = self.get(next)
 			for r in json_data["results"]:
@@ -56,15 +56,45 @@ class OTXv2(object):
 			next = json_data["next"]
 		return pulses
 
-	def getsince(self, mytimestamp):
+	def getall_iter(self, limit=20):
 		pulses = []
-		next = "%s/api/v1/pulses/subscribed?limit=20&modified_since=%s" % (self.server, mytimestamp)
+		next = "%s/api/v1/pulses/subscribed?limit=%d" % (self.server, limit)
+		while next:
+			json_data = self.get(next)
+			for r in json_data["results"]:
+				yield r
+			next = json_data["next"]
+		
+	def getsince(self, mytimestamp, limit=20):
+		pulses = []
+		next = "%s/api/v1/pulses/subscribed?limit=%d&modified_since=%s" % (self.server, limit, mytimestamp)
 		while next:
 			json_data = self.get(next)
 			for r in json_data["results"]:
 				pulses.append(r)
 			next = json_data["next"]
 		return pulses
+
+	def getsince_iter(self, mytimestamp, limit=20):
+		pulses = []
+		next = "%s/api/v1/pulses/subscribed?limit=%d&modified_since=%s" % (self.server, limit, mytimestamp)
+		while next:
+			json_data = self.get(next)
+			for r in json_data["results"]:
+				yield r
+			next = json_data["next"]
+		
+
+	def getevents_since(self, mytimestamp, limit=20):
+		events = []
+		next = "%s/api/v1/pulses/events?limit=%d&since=%s" % (self.server, limit, mytimestamp)
+		while next:
+			json_data = self.get(next)
+			for r in json_data["results"]:
+				events.append(r)
+			next = json_data["next"]
+		return events
+
 
 
 
