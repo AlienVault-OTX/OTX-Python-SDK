@@ -9,4 +9,5 @@ setup(name='OTXv2',
       author_email='otx@alienvault.com',
       url='https://github.com/AlienVault-Labs/OTX-Python-SDK',
       py_modules=['OTXv2'],
+      install_requires=['simplejson']
       )
