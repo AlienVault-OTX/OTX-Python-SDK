@@ -1,16 +1,31 @@
 #!/usr/bin/env python
 
-import httplib
-import urlparse
-import urllib
-import urllib2
-import simplejson as json
 import time
 import re
 import logging
 import datetime
+import simplejson as json
+
+try:
+	# For Python2
+	import httplib
+	import urlparse
+except ImportError:
+	# For Python3
+	import http.client as httplib
+	import urllib.parse as urlparse
+
+try:
+	# For Python2
+	from urllib2 import URLError, build_opener
+except ImportError:
+	# For Python3
+	from urllib.error import URLError
+	from urllib.request import build_opener
+
 
 logger = logging.getLogger("OTXv2")
+
 
 class InvalidAPIKey(Exception):
 	def __init__(self, value):
@@ -19,6 +34,7 @@ class InvalidAPIKey(Exception):
 	def __str__(self):
 		return repr(self.value)
 
+
 class BadRequest(Exception):
 	def __init__(self, value):
 		self.value = value
@@ -26,18 +42,22 @@ class BadRequest(Exception):
 	def __str__(self):
 		return repr(self.value)
 
+
 class OTXv2(object):
+	"""
+	Main class to interact with the AlienVault OTX API.
+	"""
 	def __init__(self, key, server="http://otx.alienvault.com"):
 		self.key = key
 		self.server = server 
 
 	def get(self, url):
-		request = urllib2.build_opener()
+		request = build_opener()
 		request.addheaders = [('X-OTX-API-KEY', self.key)]
 		response = None
 		try:
 			response = request.open(url)
-		except urllib2.URLError, e:
+		except URLError as e:
 			if e.code == 403:
 				raise InvalidAPIKey("Invalid API Key")
 			elif e.code == 400:
@@ -94,9 +114,3 @@ class OTXv2(object):
 				events.append(r)
 			next = json_data["next"]
 		return events
-
-
-
-
-
-
