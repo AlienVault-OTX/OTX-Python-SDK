@@ -46,7 +46,10 @@ class OTXv2(object):
             request = build_opener(proxy)
         else:
             request = build_opener()
-        request.addheaders = [('X-OTX-API-KEY', self.key)]
+        request.addheaders = [
+            ('X-OTX-API-KEY', self.key),
+            ('User-Agent', 'OTX Python SDK/1.0')
+        ]
         response = None
         try:
             response = request.open(url)
