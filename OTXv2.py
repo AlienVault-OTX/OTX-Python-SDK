@@ -5,11 +5,11 @@ import logging
 
 try:
     # For Python2
-    from urllib2 import URLError, build_opener
+    from urllib2 import URLError, build_opener, ProxyHandler
 except ImportError:
     # For Python3
     from urllib.error import URLError
-    from urllib.request import build_opener
+    from urllib.request import build_opener, ProxyHandler
 
 
 logger = logging.getLogger("OTXv2")
@@ -35,12 +35,17 @@ class OTXv2(object):
     """
     Main class to interact with the AlienVault OTX API.
     """
-    def __init__(self, key, server="http://otx.alienvault.com"):
+    def __init__(self, key, proxy, server="http://otx.alienvault.com"):
         self.key = key
         self.server = server
+        self.proxy = proxy
 
     def get(self, url):
-        request = build_opener()
+        if self.proxy:
+            proxy = ProxyHandler({'http': self.proxy})
+            request = build_opener(proxy)
+        else:
+            request = build_opener()
         request.addheaders = [('X-OTX-API-KEY', self.key)]
         response = None
         try:
