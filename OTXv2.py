@@ -41,7 +41,7 @@ class OTXv2(object):
     Main class to interact with the AlienVault OTX API.
     """
 
-    def __init__(self, api_key, proxy=None, server="http://otx.alienvault.com"):
+    def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com"):
         self.key = api_key
         self.server = server
         self.proxy = proxy
@@ -75,12 +75,12 @@ class OTXv2(object):
 
     def create_url(self, url_path, **kwargs):
         uri = url_path.format(self.server)
-        uri.append("?")
+        uri +="?"
         for parameter, value in kwargs.items():
-            uri.append(parameter)
-            uri.append("=")
-            uri.append(value)
-            uri.append("&")
+            uri+=parameter
+            uri+="="
+            uri+= str(value)
+            uri+="&"
         return uri
 
     def getall(self, limit=20):
