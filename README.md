@@ -8,7 +8,7 @@ OTX Direct Connect agents provide a way to automatically update your security in
 OTX DirectConnect provides a mechanism to automatically pull indicators of compromise from the Open Threat Exchange portal into your environment.  The DirectConnect API provides access to all _Pulses_ that you have subscribed to in Open Threat Exchange (https://otx.alienvault.com).
 
 1. Clone this repo
-2. Run 'python setup.py install' 
+2. Run (from the root directory)   ``` pip install . ```   or ``` python setup.py install ```
 3. Integrate into your codebase (see Python Notebook example below)
 
 
