@@ -3,11 +3,12 @@
 import json
 import logging
 
+import IndicatorTypes
+
 API_V1_ROOT = "{}/api/v1/"
 PULSES_ROOT = "{}/pulses".format(API_V1_ROOT)
 SUBSCRIBED = "{}/subscribed".format(PULSES_ROOT)
 EVENTS = "{}/events".format(PULSES_ROOT)
-
 
 try:
     # For Python2
@@ -41,10 +42,11 @@ class OTXv2(object):
     Main class to interact with the AlienVault OTX API.
     """
 
-    def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com"):
+    def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com", project="SDK"):
         self.key = api_key
         self.server = server
         self.proxy = proxy
+        self.sdk = 'OTX Python {}/1.0'.format(project)
 
     def get(self, url):
         """
@@ -59,7 +61,7 @@ class OTXv2(object):
             request = build_opener()
         request.addheaders = [
             ('X-OTX-API-KEY', self.key),
-            ('User-Agent', 'OTX Python SDK/1.0')
+            ('User-Agent', self.sdk)
         ]
         response = None
         try:
@@ -75,12 +77,12 @@ class OTXv2(object):
 
     def create_url(self, url_path, **kwargs):
         uri = url_path.format(self.server)
-        uri +="?"
+        uri += "?"
         for parameter, value in kwargs.items():
-            uri+=parameter
-            uri+="="
-            uri+= str(value)
-            uri+="&"
+            uri += parameter
+            uri += "="
+            uri += str(value)
+            uri += "&"
         return uri
 
     def getall(self, limit=20):
@@ -100,7 +102,6 @@ class OTXv2(object):
 
     def getall_iter(self, limit=20):
         """
-        @DEPRECATED
         :param limit:
         :return:
         """
@@ -136,6 +137,19 @@ class OTXv2(object):
             for r in json_data["results"]:
                 yield r
             next = json_data["next"]
+
+    def get_all_indicators(self, indicator_types=IndicatorTypes.all_types):
+        """
+        Get all the indicators contained within your pulses of the IndicatorTypes passed.
+        By default returns all IndicatorTypes.
+        :param indicator_types: IndicatorTypes to return
+        :return: yields the indicator object for use
+        """
+        name_list = IndicatorTypes.to_name_list(indicator_types)
+        for pulse in self.getall_iter():
+            for indicator in pulse["indicators"]:
+                if indicator["type"] in name_list:
+                    yield indicator
 
     def getevents_since(self, mytimestamp, limit=20):
         """
