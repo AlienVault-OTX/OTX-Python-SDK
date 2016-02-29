@@ -1,10 +1,7 @@
-
-
 class IndicatorTypes(object):
     def __init__(self, name, description):
         self.name = name
         self.description = description
-
 
 
 IPv4 = IndicatorTypes(name="IPv4",
@@ -65,5 +62,6 @@ all_types = [IPv4,
              MUTEX,
              CVE]
 
+
 def to_name_list(indicator_type_list):
-        return [indicator_type.name for indicator_type in indicator_type_list]
+    return [indicator_type.name for indicator_type in indicator_type_list]
