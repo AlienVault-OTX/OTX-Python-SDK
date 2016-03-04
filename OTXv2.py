@@ -92,12 +92,12 @@ class OTXv2(object):
         :return: the consolidated set of pulses for the user
         """
         pulses = []
-        _next = self.create_url(SUBSCRIBED, limit=limit)
-        while _next:
-            json_data = self.get(_next)
+        next_page = self.create_url(SUBSCRIBED, limit=limit)
+        while next_page:
+            json_data = self.get(next_page)
             for r in json_data["results"]:
                 pulses.append(r)
-            _next = json_data["next"]
+            next_page = json_data["next"]
         return pulses
 
     def getall_iter(self, limit=20):
@@ -106,12 +106,12 @@ class OTXv2(object):
         :return:
         """
         pulses = []
-        _next = self.create_url(SUBSCRIBED, limit=limit)
-        while _next:
-            json_data = self.get(_next)
+        next_page = self.create_url(SUBSCRIBED, limit=limit)
+        while next_page:
+            json_data = self.get(next_page)
             for r in json_data["results"]:
                 yield r
-            _next = json_data["next"]
+            next_page = json_data["next"]
 
     def getsince(self, mytimestamp, limit=20):
         """
@@ -121,22 +121,22 @@ class OTXv2(object):
         :return: the consolidated set of pulses for the user
         """
         pulses = []
-        _next = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
-        while _next:
-            json_data = self.get(_next)
+        next_page = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
+        while next_page:
+            json_data = self.get(next_page)
             for r in json_data["results"]:
                 pulses.append(r)
-            _next = json_data["next"]
+            next_page = json_data["next"]
         return pulses
 
     def getsince_iter(self, mytimestamp, limit=20):
         pulses = []
-        _next = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
-        while _next:
-            json_data = self.get(_next)
+        next_page = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
+        while next_page:
+            json_data = self.get(next_page)
             for r in json_data["results"]:
                 yield r
-            _next = json_data["next"]
+            next_page = json_data["next"]
 
     def get_all_indicators(self, indicator_types=IndicatorTypes.all_types):
         """
@@ -159,10 +159,11 @@ class OTXv2(object):
         :return: the consolidated set of pulses for the user
         """
         events = []
-        _next = self.create_url(EVENTS, limit=limit, since=mytimestamp)
-        while _next:
-            json_data = self.get(_next)
+        next_page = self.create_url(EVENTS, limit=limit, since=mytimestamp)
+        while next_page:
+            json_data = self.get(next_page)
             for r in json_data["results"]:
                 events.append(r)
-            _next = json_data["next"]
+            next_page = json_data["next"]
         return events
+
