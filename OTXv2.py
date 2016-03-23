@@ -12,10 +12,10 @@ EVENTS = "{}/events".format(PULSES_ROOT)
 
 try:
     # For Python2
-    from urllib2 import URLError, build_opener, ProxyHandler
+    from urllib2 import URLError, HTTPError, build_opener, ProxyHandler
 except ImportError:
     # For Python3
-    from urllib.error import URLError
+    from urllib.error import URLError, HTTPError
     from urllib.request import build_opener, ProxyHandler
 
 logger = logging.getLogger("OTXv2")
@@ -67,10 +67,13 @@ class OTXv2(object):
         try:
             response = request.open(url)
         except URLError as e:
-            if e.code == 403:
-                raise InvalidAPIKey("Invalid API Key")
-            elif e.code == 400:
-                raise BadRequest("Bad Request")
+            if isinstance(e, HTTPError):
+                if e.code == 403:
+                    raise InvalidAPIKey("Invalid API Key")
+                elif e.code == 400:
+                    raise BadRequest("Bad Request")
+            else:
+                raise e
         data = response.read().decode('utf-8')
         json_data = json.loads(data)
         return json_data
