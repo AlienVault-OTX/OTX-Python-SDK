@@ -1,12 +1,13 @@
 import unittest
 import datetime
-import dateutil.parser
+import os
 
 from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey
 from IndicatorTypes import IPv4
 
-ALIEN_API_APIKEY = "48db25670b590ae34850cb13e25397e1e6cad56f2c4f7bdae75a1121dc76bdd0"
+ALIEN_API_APIKEY = os.getenv('X_OTX_API_KEY', "mysecretkey")
+STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 
 
 class TestOTXv2(unittest.TestCase):
@@ -60,7 +61,7 @@ class TestSubscriptions(TestOTXv2):
         for pulse in pulses:
             pulse_modified = pulse.get('modified', None)
             self.assertIsNotNone(pulse_modified)
-            pulse_modified_dt = dateutil.parser.parse(pulse_modified)
+            pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
             self.assertGreaterEqual(pulse_modified_dt, three_months_dt)
 
     def test_getsince_iter(self):
@@ -72,8 +73,25 @@ class TestSubscriptions(TestOTXv2):
             self.assertTrue(pulse.get('name', None))
             pulse_modified = pulse.get('modified', None)
             self.assertIsNotNone(pulse_modified)
-            pulse_modified_dt = dateutil.parser.parse(pulse_modified)
+            pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
             self.assertGreaterEqual(pulse_modified_dt, three_months_dt)
+
+
+class TestSearch(TestOTXv2):
+    def setUp(self, **kwargs):
+        super(TestSearch, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+
+    def test_search(self):
+        pulses = self.otx.search_pulses("malware", limit=9999)
+        self.assertIsNotNone(pulses)
+        self.assertTrue(len(pulses) > 0)
+        most_recent = pulses[0]
+        self.assertIsNotNone(most_recent.get('modified', None))
+        self.assertIsNotNone(most_recent.get('author', None))
+        self.assertIsNotNone(most_recent.get('id', None))
+        self.assertIsNotNone(most_recent.get('indicators', None))
+        self.assertIsNotNone(most_recent.get('tags', None))
+        self.assertIsNotNone(most_recent.get('references', None))
 
 
 class TestEvents(TestOTXv2):

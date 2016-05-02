@@ -110,7 +110,6 @@ class OTXv2(object):
         :param limit:
         :return:
         """
-        pulses = []
         next_page = self.create_url(SUBSCRIBED, limit=limit)
         while next_page:
             json_data = self.get(next_page)
@@ -135,7 +134,6 @@ class OTXv2(object):
         return pulses
 
     def getsince_iter(self, mytimestamp, limit=20):
-        pulses = []
         next_page = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
         while next_page:
             json_data = self.get(next_page)

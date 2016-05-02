@@ -3,6 +3,10 @@ python:
   - 2.7
   - 3.4
 # command to install dependencies
-install: "pip install -r requirements.txt"
+#install: "pip install -r requirements.txt"
+
+install:
+  - python setup.py install
+
 # command to run tests
 script: tests/test_client.py
