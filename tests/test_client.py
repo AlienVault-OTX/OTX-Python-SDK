@@ -38,7 +38,6 @@ class TestSubscriptions(TestOTXv2):
         self.assertIsNotNone(pulses)
         self.assertTrue(len(pulses) > 0)
         most_recent = pulses[0]
-        print "most recent pulse: {0}".format(most_recent.get('name', ''))
         self.assertIsNotNone(most_recent.get('id', None))
         self.assertIsNotNone(most_recent.get('name', None))
         self.assertIsNotNone(most_recent.get('description', None))
@@ -89,7 +88,6 @@ class TestSearch(TestOTXv2):
         self.assertIsNotNone(most_recent.get('modified', None))
         self.assertIsNotNone(most_recent.get('author', None))
         self.assertIsNotNone(most_recent.get('id', None))
-        self.assertIsNotNone(most_recent.get('indicators', None))
         self.assertIsNotNone(most_recent.get('tags', None))
         self.assertIsNotNone(most_recent.get('references', None))
 
