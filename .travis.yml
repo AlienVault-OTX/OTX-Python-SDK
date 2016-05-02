@@ -12,4 +12,4 @@ before_script:
  - chmod +x tests/test_client.py
 
 # command to run tests
-script: tests/test_client.py
+script: python tests/test_client.py
