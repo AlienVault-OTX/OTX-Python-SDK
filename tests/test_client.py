@@ -87,7 +87,6 @@ class TestEvents(TestOTXv2):
         self.assertIsNotNone(events)
         self.assertTrue(len(events) > 0)
         most_recent = events[0]
-        print "Next event: {0}".format(most_recent.keys())
         self.assertIsNotNone(most_recent.get('action', None))
         self.assertIsNotNone(most_recent.get('created', None))
         self.assertIsNotNone(most_recent.get('id', None))
