@@ -8,6 +8,7 @@ setup(name='OTXv2',
       author='AlienVault Team',
       author_email='otx@alienvault.com',
       url='https://github.com/AlienVault-Labs/OTX-Python-SDK',
-      py_modules=['OTXv2','IndicatorTypes'],
+      download_url='https://github.com/AlienVault-Labs/OTX-Python-SDK/tarball/1.1.0',
+      py_modules=['OTXv2', 'IndicatorTypes'],
       install_requires=['simplejson']
       )
