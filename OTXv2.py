@@ -1,26 +1,28 @@
 #!/usr/bin/env python
 
 import json
-import logging
 
 import IndicatorTypes
 
-API_V1_ROOT = "{}/api/v1/"
-PULSES_ROOT = "{}/pulses".format(API_V1_ROOT)
-SUBSCRIBED = "{}/subscribed".format(PULSES_ROOT)
-EVENTS = "{}/events".format(PULSES_ROOT)
-SEARCH_PULSES = "{}/search/".format(API_V1_ROOT)
-SEARCH_USERS = SEARCH_PULSES + "users/"
+# API URLs
+API_V1_ROOT = "{}/api/v1"                                   # API v1 base path
+SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)     # pulse subscriptions
+EVENTS = "{}/pulses/events".format(API_V1_ROOT)             # events (user actions)
+SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)      # search pulses
+SEARCH_USERS = SEARCH_PULSES + "users/"                     # search users
+PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)            # pulse meta data
+PULSE_INDICATORS = PULSE_DETAILS + "indicators"             # pulse indicators
+PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)       # create pulse
+INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)    # indicator details
+
 
 try:
     # For Python2
-    from urllib2 import URLError, HTTPError, build_opener, ProxyHandler
+    from urllib2 import URLError, HTTPError, build_opener, ProxyHandler, urlopen, Request
 except ImportError:
     # For Python3
     from urllib.error import URLError, HTTPError
-    from urllib.request import build_opener, ProxyHandler
-
-logger = logging.getLogger("OTXv2")
+    from urllib.request import build_opener, ProxyHandler, urlopen, Request
 
 
 class InvalidAPIKey(Exception):
@@ -80,15 +82,94 @@ class OTXv2(object):
         json_data = json.loads(data)
         return json_data
 
+    def post(self, url, body):
+        """
+        Internal API for POST request on a OTX URL
+        :param url: URL to retrieve
+        :param body: HTTP Body to send in request
+        :return: response as dict
+        """
+        print('post url: {}'.format(url))
+        request = Request(url)
+        request.add_header('X-OTX-API-KEY', self.key)
+        request.add_header('User-Agent', self.sdk)
+        request.add_header("Content-Type", "application/json")
+        method = "POST"
+        request.get_method = lambda: method
+        if body:
+            request.add_data(json.dumps(body))
+        try:
+            response = urlopen(request)
+            data = response.read().decode('utf-8')
+            json_data = json.loads(data)
+            return json_data
+        except URLError as e:
+            if isinstance(e, HTTPError):
+                if e.code == 403:
+                    raise InvalidAPIKey("Invalid API Key")
+                elif e.code == 400:
+                    raise BadRequest("Bad Request")
+        return {}
+
+    def create_pulse(self, **kwargs):
+        """
+        Create a pulse via HTTP Post (Content Type: application/json)
+        :param kwargs containing pulse to submit
+            :param name(string, required) pulse name
+            :param public(boolean, required) long form description of threat
+            :param description(string) long form description of threat
+            :param tlp(string) Traffic Light Protocol level for threat sharing
+            :param tags(list of strings) short keywords to associate with your pulse
+            :param references(list of strings, preferably URLs) external references for this threat
+            :param indicators(list of objects) IOCs to include in pulse
+        :return: request body response
+        """
+        body = {
+            'name': kwargs.get('name', ''),
+            'description': kwargs.get('description', ''),
+            'public': kwargs.get('public', True),
+            'tlp': kwargs.get('TLP', kwargs.get('tlp', 'green')),
+            'tags': kwargs.get('tags', []),
+            'references': kwargs.get('references', []),
+            'indicators': kwargs.get('indicators', [])
+        }
+        # name is required.  Public is too but will be set True if not specified.
+        if not body.get('name'):
+            raise ValueError('Cannot create a pulse without a name.  Please resubmit your pulse with a name(string).')
+        return self.post(self.create_url(PULSE_CREATE), body=body)
+
     def create_url(self, url_path, **kwargs):
+        """
+
+        :param url_path: Request path (i.e. "/search/pulses")
+        :param kwargs: key value pairs to be added as query parameters
+        :return: a formatted url (i.e. "/search/pulses")
+        """
         uri = url_path.format(self.server)
-        uri += "?"
-        for parameter, value in kwargs.items():
-            uri += parameter
-            uri += "="
-            uri += str(value)
-            uri += "&"
+        if kwargs.items():
+            uri += "?"
+            for parameter, value in kwargs.items():
+                uri += parameter
+                uri += "="
+                uri += str(value)
+                uri += "&"
         return uri
+
+    def create_indicator_detail_url(self, indicator_type, indicator, section='general'):
+        """ Build a valid indicator detail url.  This api contains all data we have about indicators.
+
+        Only indicators with IndicatorTypes.api_support = True should be used.
+
+        :param indicator_type: IndicatorType instance
+        :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
+        :param section: Section from IndicatorTypes.section.  Default is general info
+        :return: formatted URL string
+        """
+        indicator_url = self.create_url(INDICATOR_DETAILS)
+        indicator_url = indicator_url + "{indicator_type}/{indicator}/{section}".format(indicator_type=indicator_type.name,
+                                                                                        indicator=indicator,
+                                                                                        section=section)
+        return indicator_url
 
     def getall(self, limit=20):
         """
@@ -97,65 +178,99 @@ class OTXv2(object):
         :return: the consolidated set of pulses for the user
         """
         pulses = []
-        next_page = self.create_url(SUBSCRIBED, limit=limit)
-        while next_page:
-            json_data = self.get(next_page)
+        next_page_url = self.create_url(SUBSCRIBED, limit=limit)
+        while next_page_url:
+            json_data = self.get(next_page_url)
             for r in json_data["results"]:
                 pulses.append(r)
-            next_page = json_data["next"]
+            next_page_url = json_data["next"]
         return pulses
 
     def getall_iter(self, limit=20):
         """
-        :param limit:
-        :return:
-        """
-        next_page = self.create_url(SUBSCRIBED, limit=limit)
-        while next_page:
-            json_data = self.get(next_page)
-            for r in json_data["results"]:
-                yield r
-            next_page = json_data["next"]
-
-    def getsince(self, mytimestamp, limit=20):
-        """
-        Get all pulses created or updated since a timestamp
-        :param mytimestamp: timestamp to filter returned pulses
+        Get all pulses user is subscribed to, yield results.
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
-        pulses = []
-        next_page = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
-        while next_page:
-            json_data = self.get(next_page)
-            for r in json_data["results"]:
-                pulses.append(r)
-            next_page = json_data["next"]
-        return pulses
-
-    def getsince_iter(self, mytimestamp, limit=20):
-        next_page = self.create_url(SUBSCRIBED, limit=limit, modified_since=mytimestamp)
-        while next_page:
-            json_data = self.get(next_page)
+        next_page_url = self.create_url(SUBSCRIBED, limit=limit)
+        while next_page_url:
+            json_data = self.get(next_page_url)
             for r in json_data["results"]:
                 yield r
-            next_page = json_data["next"]
+            next_page_url = json_data["next"]
 
-    def search_pulses(self, query, limit=20):
+    def getsince(self, timestamp, limit=20):
+        """
+        Get all pulses modified since a particular time.
+        :param timestamp: iso formatted date time string
+        :param limit: Maximum number of results to return in a single request
+        :return: the consolidated set of pulses for the user
+        """
+        pulses = []
+        next_page_url = self.create_url(SUBSCRIBED, limit=limit, modified_since=timestamp)
+        while next_page_url:
+            json_data = self.get(next_page_url)
+            for r in json_data["results"]:
+                pulses.append(r)
+            next_page_url = json_data["next"]
+        return pulses
+
+    def getsince_iter(self, timestamp, limit=20):
+        """
+        Get all pulses modified since a particular time, yield results.
+        :param timestamp: iso formatted date time string
+        :param limit: Maximum number of results to return in a single request
+        :return: the consolidated set of pulses for the user
+        """
+        next_page_url = self.create_url(SUBSCRIBED, limit=limit, modified_since=timestamp)
+        while next_page_url:
+            json_data = self.get(next_page_url)
+            for r in json_data["results"]:
+                yield r
+            next_page_url = json_data["next"]
+
+    def search_pulses(self, query, limit=20, page=1):
+        """
+        Get all pulses with text matching `query`.
+        :param query: The text to search for
+        :param limit: The page size to retrieve in a single request
+        :param page: The page number (based on pages of ```limit``` results)
+        :return: the consolidated set of pulses for the user
+        """
+        search_users_url = self.create_url(SEARCH_PULSES, q=query, limit=limit, page=1)
+        return self._get_paginated_resource(search_users_url)
+
+    def search_users(self, query, limit=20):
         """
         Get all pulses with text matching `query`.
         :param query: The text to search for
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
-        pulses = []
-        next_page = self.create_url(SEARCH_PULSES, q=query, limit=limit)
-        while next_page:
-            json_data = self.get(next_page)
-            for r in json_data["results"]:
-                pulses.append(r)
-            next_page = json_data["next"]
-        return pulses
+        search_users_url = self.create_url(SEARCH_USERS, q=query, limit=limit)
+        return self._get_paginated_resource(search_users_url)
+
+    def _get_paginated_resource(self, url=SUBSCRIBED):
+        """
+        Get all pages of a particular API resource, and retain additional fields.
+
+        For example, search requests return: {"results": "", "": ""}
+        :param url: URL for first page of a paginated list api. Default is list subscribed pulses.
+        :return: the consolidated set of results
+        """
+        results = []
+        next_page_url = url
+        print("get paginated resource: {0}".format(url))
+        additional_fields = {}
+        while next_page_url:
+            json_data = self.get(next_page_url)
+            for r in json_data.pop("results"):
+                results.append(r)
+            next_page_url = json_data.pop("next")
+            json_data.pop('previous', '')
+            if json_data.items():
+                additional_fields.update(json_data)
+        return results, additional_fields
 
     def get_all_indicators(self, indicator_types=IndicatorTypes.all_types):
         """
@@ -170,18 +285,67 @@ class OTXv2(object):
                 if indicator["type"] in name_list:
                     yield indicator
 
-    def getevents_since(self, mytimestamp, limit=20):
+    def getevents_since(self, timestamp, limit=20):
         """
         Get all events (activity) created or updated since a timestamp
-        :param mytimestamp: timestamp to filter returned activity
+        :param timestamp: ISO formatted datetime string to restrict results (not older than timestamp).
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
         events = []
-        next_page = self.create_url(EVENTS, limit=limit, since=mytimestamp)
-        while next_page:
-            json_data = self.get(next_page)
+        next_page_url = self.create_url(EVENTS, limit=limit, since=timestamp)
+        while next_page_url:
+            json_data = self.get(next_page_url)
             for r in json_data["results"]:
                 events.append(r)
-            next_page = json_data["next"]
+            next_page_url = json_data["next"]
         return events
+
+    def get_pulse_details(self, pulse_id):
+        """
+        For a given pulse_id, get the details of an arbitrary pulse.
+        :param pulse_id: object id for pulse
+        :return: Pulse as dict
+        """
+        pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id))
+        meta_data = self.get(pulse_url)
+        return meta_data
+
+    def get_pulse_indicators(self, pulse_id):
+        """
+        For a given pulse_id, get indicators of compromise
+        :param pulse_id: timestamp to filter returned activity
+        :return: Pulse as dict
+        """
+        pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators")
+        pulse_indicators_url = pulse_url
+        indicators = self.get(pulse_indicators_url)
+        return indicators
+
+    def get_indicator_details_by_section(self, indicator_type, indicator, section='general'):
+        """
+        Obtain a specific section for an indicator.
+        :param indicator_type: IndicatorType instance
+        :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
+        :param section: Section from IndicatorTypes.section.  Default is general info
+        :return: Return indicator details as dict
+
+        """
+        if not indicator_type.api_support:
+            raise TypeError("IndicatorType {0} is not currently supported.".format(indicator_type))
+        if section not in indicator_type.sections:
+            raise TypeError("Section {0} is not currently supported for indicator type: {0}")
+        indicator_url = self.create_indicator_detail_url(indicator_type, indicator, section)
+        indicator_details = self.get(indicator_url)
+        return indicator_details
+
+    def get_full_indicator_details(self, indicator_type, indicator):
+        """
+        Obtain all sections for an indicator.
+        :param indicator_type: IndicatorType instance
+        :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
+        :return: dict with sections as keys and results for each call as values.
+        """
+        indicator_url = self.create_indicator_detail_url(indicator_type, indicator)
+        indicator_details = self.get(indicator_url)
+        return indicator_details
