@@ -3,6 +3,7 @@ import datetime
 import os
 import pprint
 import string
+import types
 
 from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey, BadRequest
@@ -96,26 +97,38 @@ class TestSearch(TestOTXv2):
         super(TestSearch, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
     def test_search_pulses_simple(self):
-        pulses, additional_data = self.otx.search_pulses("malware", limit=9)
+        res = self.otx.search_pulses("Russian")
+        pulses = res.get('results')
+        self.assertTrue(len(pulses) > 0)
         self.assertIsNotNone(pulses)
         self.assertTrue(len(pulses) > 0)
-        for pulse in pulses:
-            print(u"test_search_pulses_simple next pulse: {0}".format(pulse.get('name', '')))
-            self.assertIsNotNone(pulse.get('modified', None))
-            self.assertIsNotNone(pulse.get('author', None))
-            self.assertIsNotNone(pulse.get('id', None))
-            self.assertIsNotNone(pulse.get('tags', None))
-            self.assertIsNotNone(pulse.get('references', None))
-        self.assertTrue(additional_data.get('users_count', -1) >= 0)
-        self.assertIsNotNone(additional_data.get('exact_match'))
+        pulse = pulses[0]
+        print(u"test_search_pulses_simple top hit: {0}".format(pulse.get('name', '')))
+        self.assertIsNotNone(pulse.get('modified', None))
+        self.assertIsNotNone(pulse.get('author', None))
+        self.assertIsNotNone(pulse.get('id', None))
+        self.assertIsNotNone(pulse.get('tags', None))
+        self.assertIsNotNone(pulse.get('references', None))
+        self.assertTrue(res.get('users_count', -1) >= 0)
+        self.assertIsNotNone(res.get('exact_match'))
 
     def test_exact_match_domain(self):
-        pulses, additional_data = self.otx.search_pulses("malware.org", limit=9999)
+        res = self.otx.search_pulses("malware.org")
+        pulses = res.get('results')
+        self.assertTrue(isinstance(pulses, types.ListType))
+        self.assertTrue(len(pulses) > 0)
         self.assertIsNotNone(pulses)
         print("test_exact_match_domain additional data for malware.org:")
-        pprint.pprint(additional_data)
-        self.assertTrue(additional_data.get('exact_match', -1))
+        pprint.pprint(res)
+        self.assertTrue(res.get('exact_match', -1))
 
+    def test_search_users(self):
+        res = self.otx.search_users("alien")
+        self.assertTrue('results' in res.keys())
+        self.assertTrue(isinstance(res.get('results', ''), types.ListType))
+        users = res.get('results')
+        first_user = users[0]
+        self.assertTrue(first_user.get('username', '') != '')
 
 class TestEvents(TestOTXv2):
     def setUp(self, **kwargs):
@@ -162,7 +175,9 @@ class TestPulseDetails(TestOTXv2):
 
     def test_get_pulse_details(self):
         # get a pulse from search to use as testcase
-        pulses, additional_data = self.otx.search_pulses("malware", limit=10, page=1)
+        res = self.otx.search_pulses("Russian")
+        pulses = res.get('results')
+        self.assertTrue(len(pulses) > 0)
         pulse = pulses[0]
         pulse_id = pulse.get('id', '')
         meta_data = self.otx.get_pulse_details(pulse_id=pulse_id)
@@ -176,7 +191,9 @@ class TestPulseDetails(TestOTXv2):
         self.assertTrue('indicators' in meta_data.keys())
 
     def test_get_pulse_indicators(self):
-        pulses, additional_data = self.otx.search_pulses("malware", limit=10, page=1)
+        res = self.otx.search_pulses("Russian")
+        pulses = res.get('results')
+        self.assertTrue(len(pulses) > 0)
         pulse = pulses[0]
         pulse_id = pulse.get('id', '')
         indicators = self.otx.get_pulse_indicators(pulse_id=pulse_id)
@@ -226,9 +243,39 @@ class TestPulseCreate(TestOTXv2):
         self.assertIsNotNone(response)
 
     def test_create_pulse_no_name(self):
+        """
+        Test: pulse without name should raise value error
+        """
         print("test_create_pulse_no_name submitting nameless pulse")
         with self.assertRaises(ValueError):
             self.otx.create_pulse(**{})
+
+    def test_create_pulse_with_indicators(self):
+        """
+        Test: pulse with list of indicators
+        :return:
+        """
+        charset = string.ascii_letters
+        validated_indicator_list = []
+        indicator_list = [
+            {'indicator': generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.DOMAIN},
+            {'indicator': generate_rand_string(3, charset=charset) + "." + generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.HOSTNAME},
+            {'indicator': "69.73.130.198", 'type': IndicatorTypes.IPv4},
+            {'indicator': "2a00:1450:4001:800::1017", 'type': IndicatorTypes.IPv6},
+            {'indicator': "spearphish@" + generate_rand_string(10) + ".com", 'type': IndicatorTypes.EMAIL},
+            {'indicator': "14c04f88dc97aef3e9b516ef208a2bf5", 'type': IndicatorTypes.FILE_HASH_MD5},
+            {'indicator': "48e04cb52f1077b5f5aab75baff6c27b0ee4ade1", 'type': IndicatorTypes.FILE_HASH_SHA1},
+            {'indicator': "7522bc3e366c19ab63381bacd0f03eb09980ecb915ada08ae76d8c3e538600de", 'type': IndicatorTypes.FILE_HASH_SHA256},
+            {'indicator': "a060fe925aa888053010d1e195ef823a", 'type': IndicatorTypes.FILE_HASH_IMPHASH, "description": "Gen:Variant.Strictor.24454"},
+            {'indicator': "\sonas\share\samples\14\c0\4f\88\14c04f88dc97aef3e9b516ef208a2bf5", 'type': IndicatorTypes.FILE_PATH},
+        ]
+        for indicator in indicator_list:
+            validated_indicator = self.otx.validate_indicator(indicator.get('indicator', ''), indicator.get('type'))
+            self.assertTrue('success' in validated_indicator.get('status', ''))
+            validated_indicator_list.append(validated_indicator)
+        print("test_create_pulse_with_indicators: finished validating indicators, submitting pulse....")
+        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
+        self.otx.create_pulse(name=name, public=False, indicators=validated_indicator_list)
 
 
 class TestPulseCreateInvalidKey(TestOTXv2):

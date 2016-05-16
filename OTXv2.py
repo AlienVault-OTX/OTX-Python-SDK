@@ -9,7 +9,7 @@ API_V1_ROOT = "{}/api/v1"                                                   # AP
 SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
 EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
 SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
-SEARCH_USERS = SEARCH_PULSES + "users/"                                     # search users
+SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                                     # search users
 PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                            # pulse meta data
 PULSE_INDICATORS = PULSE_DETAILS + "indicators"                             # pulse indicators
 PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                       # create pulse
@@ -90,7 +90,6 @@ class OTXv2(object):
         :param body: HTTP Body to send in request
         :return: response as dict
         """
-        print('post url: {}'.format(url))
         request = Request(url)
         request.add_header('X-OTX-API-KEY', self.key)
         request.add_header('User-Agent', self.sdk)
@@ -170,7 +169,6 @@ class OTXv2(object):
             'description': description
         }
         response = self.post(self.create_url(VALIDATE_INDICATOR), body=body)
-        print ("validate indicator response: {}".format(response))
         return response
 
     def create_url(self, url_path, **kwargs):
@@ -264,48 +262,49 @@ class OTXv2(object):
                 yield r
             next_page_url = json_data["next"]
 
-    def search_pulses(self, query, limit=20, page=1):
+    def search_pulses(self, query, max_results=25):
         """
         Get all pulses with text matching `query`.
         :param query: The text to search for
-        :param limit: The page size to retrieve in a single request
-        :param page: The page number (based on pages of ```limit``` results)
-        :return: the consolidated set of pulses for the user
+        :param max_results: Limit the number of pulses returned in response
+        :return: All pulses matching `query`
         """
-        search_users_url = self.create_url(SEARCH_PULSES, q=query, limit=limit, page=1)
-        return self._get_paginated_resource(search_users_url)
+        search_pulses_url = self.create_url(SEARCH_PULSES, q=query, page=1, limit=20)
+        return self._get_paginated_resource(search_pulses_url, max_results=max_results)
 
-    def search_users(self, query, limit=20):
+    def search_users(self, query, max_results=25):
         """
         Get all pulses with text matching `query`.
         :param query: The text to search for
-        :param limit: The page size to retrieve in a single request
-        :return: the consolidated set of pulses for the user
+        :param max_results: Limit the number of users returned in response
+        :return: List of users with username matching `query`
         """
-        search_users_url = self.create_url(SEARCH_USERS, q=query, limit=limit)
-        return self._get_paginated_resource(search_users_url)
+        search_users_url = self.create_url(SEARCH_USERS, q=query, limit=20, page=1)
+        return self._get_paginated_resource(search_users_url, max_results=max_results)
 
-    def _get_paginated_resource(self, url=SUBSCRIBED):
+    def _get_paginated_resource(self, url=SUBSCRIBED, max_results=25):
         """
         Get all pages of a particular API resource, and retain additional fields.
 
-        For example, search requests return: {"results": "", "": ""}
         :param url: URL for first page of a paginated list api. Default is list subscribed pulses.
-        :return: the consolidated set of results
+        :param max_results: Limit the number of objects returned.
+        :return: results and additional fields as dict
         """
         results = []
         next_page_url = url
-        print("get paginated resource: {0}".format(url))
         additional_fields = {}
-        while next_page_url:
+        while next_page_url and max_results:
             json_data = self.get(next_page_url)
+            max_results -= len(json_data.get('results'))
             for r in json_data.pop("results"):
                 results.append(r)
             next_page_url = json_data.pop("next")
             json_data.pop('previous', '')
             if json_data.items():
                 additional_fields.update(json_data)
-        return results, additional_fields
+        resource = {"results": results}
+        resource.update(additional_fields)
+        return resource
 
     def get_all_indicators(self, indicator_types=IndicatorTypes.all_types):
         """
