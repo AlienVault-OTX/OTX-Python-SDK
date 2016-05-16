@@ -5,15 +5,16 @@ import json
 import IndicatorTypes
 
 # API URLs
-API_V1_ROOT = "{}/api/v1"                                   # API v1 base path
-SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)     # pulse subscriptions
-EVENTS = "{}/pulses/events".format(API_V1_ROOT)             # events (user actions)
-SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)      # search pulses
-SEARCH_USERS = SEARCH_PULSES + "users/"                     # search users
-PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)            # pulse meta data
-PULSE_INDICATORS = PULSE_DETAILS + "indicators"             # pulse indicators
-PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)       # create pulse
-INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)    # indicator details
+API_V1_ROOT = "{}/api/v1"                                                   # API v1 base path
+SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
+EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
+SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
+SEARCH_USERS = SEARCH_PULSES + "users/"                                     # search users
+PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                            # pulse meta data
+PULSE_INDICATORS = PULSE_DETAILS + "indicators"                             # pulse indicators
+PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                       # create pulse
+INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                    # indicator details
+VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)    # indicator details
 
 
 try:
@@ -117,6 +118,7 @@ class OTXv2(object):
     def create_pulse(self, **kwargs):
         """
         Create a pulse via HTTP Post (Content Type: application/json)
+
         :param kwargs containing pulse to submit
             :param name(string, required) pulse name
             :param public(boolean, required) long form description of threat
@@ -141,11 +143,41 @@ class OTXv2(object):
             raise ValueError('Cannot create a pulse without a name.  Please resubmit your pulse with a name(string).')
         return self.post(self.create_url(PULSE_CREATE), body=body)
 
-    def create_url(self, url_path, **kwargs):
+    def validate_indicator(self, indicator, indicator_type, description=""):
         """
+        The goal of validate_indicator is to aid you in pulse creation.  Use this method on each indicator before
+        calling create_pulse to ensure success in the create call.  If you supply invalid indicators in a create call,
+        the pulse will not be created.
+
+        :param indicator: indicator value (string)
+        :param indicator_type: an IndicatorTypes object (i.e. IndicatorTypes.DOMAIN)
+        :param description: a short descriptive string can be sent to the validator for length checking
+        :return:
+        """
+        if not indicator:
+            raise ValueError("please supply `indicator` when calling validate_indicator")
+        if not indicator_type:
+            raise ValueError("please supply `indicator` when calling validate_indicator")
+        # if caller supplied object instance, use name field
+        if isinstance(indicator_type, IndicatorTypes.IndicatorTypes):
+            indicator_type = indicator_type.name
+        elif indicator_type not in IndicatorTypes.to_name_list(IndicatorTypes.all_types):
+            raise ValueError("Indicator type: {} is not a valid type.".format(indicator_type))
+        # indicator type is valid, let's valdate against the otx api
+        body = {
+            'indicator': indicator,
+            'type': indicator_type,
+            'description': description
+        }
+        response = self.post(self.create_url(VALIDATE_INDICATOR), body=body)
+        print ("validate indicator response: {}".format(response))
+        return response
+
+    def create_url(self, url_path, **kwargs):
+        """ Turn a path into a valid fully formatted URL. Supports query parameter formatting as well.
 
         :param url_path: Request path (i.e. "/search/pulses")
-        :param kwargs: key value pairs to be added as query parameters
+        :param kwargs: key value pairs to be added as query parameters (i.e. limit=10, page=5)
         :return: a formatted url (i.e. "/search/pulses")
         """
         uri = url_path.format(self.server)

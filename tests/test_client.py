@@ -245,5 +245,28 @@ class TestPulseCreateInvalidKey(TestOTXv2):
                                   tags=[],
                                   references=[])
 
+
+class TestValidateIndicator(TestOTXv2):
+    def setUp(self, **kwargs):
+        super(TestValidateIndicator, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+
+    def test_validate_valid_domain(self):
+        indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
+        indicator_type = IndicatorTypes.DOMAIN
+        print("test_validate_valid_domain submitting (valid-ish) indicator: " + indicator)
+        response = self.otx.validate_indicator(indicator=indicator, indicator_type=indicator_type)
+        print ("test_validate_valid_domain response: {}".format(response))
+        self.assertIsNotNone(response)
+        self.assertTrue('success' in response.get('status', ''))
+
+    def test_validate_invalid_domain(self):
+        indicator = generate_rand_string(8, charset=string.ascii_letters).lower()
+        indicator_type = IndicatorTypes.DOMAIN
+        print("test_validate_invalid_domain submitting indicator: " + indicator)
+        response = self.otx.validate_indicator(indicator=indicator, indicator_type=indicator_type)
+        print ("test_validate_invalid_domain response: {}".format(response))
+        self.assertIsNotNone(response)
+        self.assertTrue('failed' in response.get('status', ''))
+
 if __name__ == '__main__':
     unittest.main()
