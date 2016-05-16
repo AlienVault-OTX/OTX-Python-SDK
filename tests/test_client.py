@@ -5,7 +5,7 @@ import pprint
 import string
 
 from utils import generate_rand_string
-from OTXv2 import OTXv2, InvalidAPIKey
+from OTXv2 import OTXv2, InvalidAPIKey, BadRequest
 import IndicatorTypes
 
 ALIEN_API_APIKEY = os.getenv('X_OTX_API_KEY', "mysecretkey")
@@ -263,10 +263,8 @@ class TestValidateIndicator(TestOTXv2):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower()
         indicator_type = IndicatorTypes.DOMAIN
         print("test_validate_invalid_domain submitting indicator: " + indicator)
-        response = self.otx.validate_indicator(indicator=indicator, indicator_type=indicator_type)
-        print ("test_validate_invalid_domain response: {}".format(response))
-        self.assertIsNotNone(response)
-        self.assertTrue('failed' in response.get('status', ''))
+        with self.assertRaises(BadRequest):
+            self.otx.validate_indicator(indicator=indicator, indicator_type=indicator_type)
 
 if __name__ == '__main__':
     unittest.main()
