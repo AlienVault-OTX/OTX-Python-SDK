@@ -97,7 +97,10 @@ class OTXv2(object):
         method = "POST"
         request.get_method = lambda: method
         if body:
-            request.add_data(json.dumps(body))
+            try:  # python2
+                request.add_data(json.dumps(body))
+            except AttributeError as ae:  # python3
+                request.data = json.dumps(body).encode('utf-8')
         try:
             response = urlopen(request)
             data = response.read().decode('utf-8')
