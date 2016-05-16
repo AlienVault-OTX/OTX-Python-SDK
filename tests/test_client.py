@@ -3,7 +3,6 @@ import datetime
 import os
 import pprint
 import string
-import types
 
 from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey, BadRequest
@@ -115,7 +114,7 @@ class TestSearch(TestOTXv2):
     def test_exact_match_domain(self):
         res = self.otx.search_pulses("malware.org")
         pulses = res.get('results')
-        self.assertTrue(isinstance(pulses, types.ListType))
+        self.assertTrue(isinstance(pulses, list))
         self.assertTrue(len(pulses) > 0)
         self.assertIsNotNone(pulses)
         print("test_exact_match_domain additional data for malware.org:")
@@ -125,7 +124,7 @@ class TestSearch(TestOTXv2):
     def test_search_users(self):
         res = self.otx.search_users("alien")
         self.assertTrue('results' in res.keys())
-        self.assertTrue(isinstance(res.get('results', ''), types.ListType))
+        self.assertTrue(isinstance(res.get('results', ''), list))
         users = res.get('results')
         first_user = users[0]
         self.assertTrue(first_user.get('username', '') != '')
