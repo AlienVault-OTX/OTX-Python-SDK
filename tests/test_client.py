@@ -8,7 +8,7 @@ from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey
 import IndicatorTypes
 
-ALIEN_API_APIKEY = os.getenv('X_OTX_API_KEY', "db91e98e6dcac6303bd1522d3542f91fcb4be176ea262ecd892d39e0d82a218b")
+ALIEN_API_APIKEY = os.getenv('X_OTX_API_KEY', "mysecretkey")
 STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 
 
