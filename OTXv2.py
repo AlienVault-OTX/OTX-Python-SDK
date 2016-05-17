@@ -9,7 +9,7 @@ API_V1_ROOT = "{}/api/v1"                                                   # AP
 SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
 EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
 SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
-SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                                     # search users
+SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                        # search users
 PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                            # pulse meta data
 PULSE_INDICATORS = PULSE_DETAILS + "indicators"                             # pulse indicators
 PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                       # create pulse
@@ -293,7 +293,7 @@ class OTXv2(object):
         results = []
         next_page_url = url
         additional_fields = {}
-        while next_page_url and max_results:
+        while next_page_url and len(results) < max_results:
             json_data = self.get(next_page_url)
             max_results -= len(json_data.get('results'))
             for r in json_data.pop("results"):
@@ -302,7 +302,7 @@ class OTXv2(object):
             json_data.pop('previous', '')
             if json_data.items():
                 additional_fields.update(json_data)
-        resource = {"results": results}
+        resource = {"results": results[:max_results]}
         resource.update(additional_fields)
         return resource
 
