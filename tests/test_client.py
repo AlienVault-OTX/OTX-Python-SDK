@@ -223,8 +223,8 @@ class TestIndicatorDetails(TestOTXv2):
 
     def test_get_indicator_details_IPv4_full(self):
         print("test_get_indicator_details_IPv4_full")
-        full_details = self.otx.get_full_indicator_details(IndicatorTypes.IPv4, "69.73.130.198")
-        print("details: ")
+        full_details = self.otx.get_indicator_details_full(IndicatorTypes.IPv4, "69.73.130.198")
+        self.assertTrue(sorted(full_details.keys()) == sorted(IndicatorTypes.IPv4.sections))
         pprint.pprint(full_details)
 
 
@@ -290,7 +290,7 @@ class TestPulseCreate(TestOTXv2):
         ]
         name = "Pyclient-indicators-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         for indicator in indicator_list:
-            validated_indicator = self.otx.validate_indicator(indicator.get('indicator', ''), indicator.get('type'))
+            validated_indicator = self.otx.validate_indicator(indicator.get('type'), indicator.get('indicator', ''))
             self.assertTrue('success' in validated_indicator.get('status', ''))
             validated_indicator_list.append(validated_indicator)
         print("test_create_pulse_with_indicators: finished validating indicators.\nsubmitting pulse: {}".format({"name": name, "indicators": validated_indicator_list}))
@@ -342,7 +342,7 @@ class TestValidateIndicator(TestOTXv2):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
         indicator_type = IndicatorTypes.DOMAIN
         print("test_validate_valid_domain submitting (valid-ish) indicator: " + indicator)
-        response = self.otx.validate_indicator(indicator=indicator, indicator_type=indicator_type)
+        response = self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
         print ("test_validate_valid_domain response: {}".format(response))
         self.assertIsNotNone(response)
         self.assertTrue('success' in response.get('status', ''))
@@ -352,7 +352,7 @@ class TestValidateIndicator(TestOTXv2):
         indicator_type = IndicatorTypes.DOMAIN
         print("test_validate_invalid_domain submitting indicator: " + indicator)
         with self.assertRaises(BadRequest):
-            self.otx.validate_indicator(indicator=indicator, indicator_type=indicator_type)
+            self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
 
 if __name__ == '__main__':
     unittest.main()

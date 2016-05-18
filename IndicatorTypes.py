@@ -23,11 +23,11 @@ class IndicatorTypes(object):
 IPv4 = IndicatorTypes(name="IPv4",
                       description="An IPv4 address indicating the online location of a server or other computer.",
                       api_support=True,
-                      sections=["general", "pulses", "reputation", "geo", "malware", "address_list", "url_list"])
+                      sections=["general", "reputation", "geo", "malware", "address_list", "url_list"])
 IPv6 = IndicatorTypes(name="IPv6",
                       description="An IPv6 address indicating the online location of a server or other computer.",
                       api_support=True,
-                      sections=["general", "pulses", "reputation", "geo", "malware", "address_list", "url_list"])
+                      sections=["general", "reputation", "geo", "malware", "address_list", "url_list"])
 DOMAIN = IndicatorTypes(name="domain",
                         description="A domain name for a website or server. Domains encompass a series of hostnames.",
                         api_support=True,

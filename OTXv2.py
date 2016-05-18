@@ -153,7 +153,7 @@ class OTXv2(object):
             raise ValueError('Name required.  Please resubmit your pulse with a name (string, 5-64 chars).')
         return self.post(self.create_url(PULSE_CREATE), body=body)
 
-    def validate_indicator(self, indicator, indicator_type, description=""):
+    def validate_indicator(self, indicator_type, indicator, description=""):
         """
         The goal of validate_indicator is to aid you in pulse creation.  Use this method on each indicator before
         calling create_pulse to ensure success in the create call.  If you supply invalid indicators in a create call,
@@ -209,6 +209,7 @@ class OTXv2(object):
         :param section: Section from IndicatorTypes.section.  Default is general info
         :return: formatted URL string
         """
+        print ("create_indicator_detail_url indicator_type: {}, indicator: {}, section: {}".format(indicator_type, indicator, section))
         indicator_url = self.create_url(INDICATOR_DETAILS)
         indicator_url = indicator_url + "{indicator_type}/{indicator}/{section}".format(indicator_type=indicator_type.name,
                                                                                         indicator=indicator,
@@ -384,13 +385,15 @@ class OTXv2(object):
         indicator_details = self.get(indicator_url)
         return indicator_details
 
-    def get_full_indicator_details(self, indicator_type, indicator):
+    def get_indicator_details_full(self, indicator_type, indicator):
         """
         Obtain all sections for an indicator.
         :param indicator_type: IndicatorType instance
         :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
         :return: dict with sections as keys and results for each call as values.
         """
-        indicator_url = self.create_indicator_detail_url(indicator_type, indicator)
-        indicator_details = self.get(indicator_url)
-        return indicator_details
+        indicator_dict = {}
+        for section in indicator_type.sections:
+            indicator_url = self.create_indicator_detail_url(indicator_type, indicator, section)
+            indicator_dict[section] = self.get(indicator_url)
+        return indicator_dict
