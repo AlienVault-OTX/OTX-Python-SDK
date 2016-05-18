@@ -111,12 +111,22 @@ class OTXv2(object):
                 if e.code == 403:
                     raise InvalidAPIKey("Invalid API Key")
                 elif e.code == 400:
-                    raise BadRequest("Bad Request")
+                    encoded_error = e.read()
+                    decoded_error = encoded_error.decode('utf-8')
+                    json.loads(decoded_error)
+                    print("raising badrequest with {}".format(decoded_error))
+                    raise BadRequest(decoded_error)
         return {}
 
     def create_pulse(self, **kwargs):
         """
-        Create a pulse via HTTP Post (Content Type: application/json)
+        Create a pulse via HTTP Post (Content Type: application/json).
+        Notes:
+            If `TLP` is one of: ['red', 'amber'], `public` must be false.
+            `name` field is required
+            Default values (unless specified):
+                - public: True
+                - TLP: 'green'
 
         :param kwargs containing pulse to submit
             :param name(string, required) pulse name
@@ -127,19 +137,20 @@ class OTXv2(object):
             :param references(list of strings, preferably URLs) external references for this threat
             :param indicators(list of objects) IOCs to include in pulse
         :return: request body response
+        :raises BadRequest (400) On failure, BadRequest will be raised containing the invalid fields.
         """
         body = {
             'name': kwargs.get('name', ''),
             'description': kwargs.get('description', ''),
             'public': kwargs.get('public', True),
-            'tlp': kwargs.get('TLP', kwargs.get('tlp', 'green')),
+            'TLP': kwargs.get('TLP', kwargs.get('tlp', 'green')),
             'tags': kwargs.get('tags', []),
             'references': kwargs.get('references', []),
             'indicators': kwargs.get('indicators', [])
         }
         # name is required.  Public is too but will be set True if not specified.
         if not body.get('name'):
-            raise ValueError('Cannot create a pulse without a name.  Please resubmit your pulse with a name(string).')
+            raise ValueError('Name required.  Please resubmit your pulse with a name (string, 5-64 chars).')
         return self.post(self.create_url(PULSE_CREATE), body=body)
 
     def validate_indicator(self, indicator, indicator_type, description=""):

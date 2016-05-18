@@ -129,6 +129,7 @@ class TestSearch(TestOTXv2):
         first_user = users[0]
         self.assertTrue(first_user.get('username', '') != '')
 
+
 class TestEvents(TestOTXv2):
     def setUp(self, **kwargs):
         super(TestEvents, self).setUp(**{'api_key': ALIEN_API_APIKEY})
@@ -232,7 +233,7 @@ class TestPulseCreate(TestOTXv2):
         super(TestPulseCreate, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
     def test_create_pulse_simple(self):
-        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
+        name = "Pyclient-simple-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         print("test_create_pulse_simple submitting pulse: " + name)
         response = self.otx.create_pulse(name=name,
                                          public=False,
@@ -249,10 +250,29 @@ class TestPulseCreate(TestOTXv2):
         with self.assertRaises(ValueError):
             self.otx.create_pulse(**{})
 
+    def test_create_pulse_name_too_short(self):
+        """
+        Test: pulse without name should raise value error
+        """
+        body = {'name': generate_rand_string(2)}
+        print("test_create_pulse_name_too_short submitting pulse: {}\nExpecting BadRequest.".format(body))
+        with self.assertRaises(BadRequest):
+            self.otx.create_pulse(**body)
+
+    def test_create_pulse_tlp_mismatch(self):
+        """
+        Test: pulse without name should raise value error
+        """
+        name = generate_rand_string(10)
+        tlps = ['red', 'amber']
+        for tlp in tlps:
+            print("test_create_pulse_tlp_mismatch submitting pulse: {} (tlp: {})".format(name, tlp))
+            with self.assertRaises(BadRequest):
+                self.otx.create_pulse(name=name, TLP=tlp, public=True)
+
     def test_create_pulse_with_indicators(self):
         """
         Test: pulse with list of indicators
-        :return:
         """
         charset = string.ascii_letters
         validated_indicator_list = []
@@ -268,7 +288,7 @@ class TestPulseCreate(TestOTXv2):
             {'indicator': "a060fe925aa888053010d1e195ef823a", 'type': IndicatorTypes.FILE_HASH_IMPHASH},
             {'indicator': "\sonas\share\samples\14\c0\4f\88\14c04f88dc97aef3e9b516ef208a2bf5", 'type': IndicatorTypes.FILE_PATH},
         ]
-        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
+        name = "Pyclient-indicators-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         for indicator in indicator_list:
             validated_indicator = self.otx.validate_indicator(indicator.get('indicator', ''), indicator.get('type'))
             self.assertTrue('success' in validated_indicator.get('status', ''))
@@ -277,6 +297,25 @@ class TestPulseCreate(TestOTXv2):
         response = self.otx.create_pulse(name=name, public=False, indicators=validated_indicator_list)
         self.assertTrue(response.get('name', '') == name)
         self.assertTrue(len(response.get('indicators', [])) == len(validated_indicator_list))
+        return
+
+    def test_create_pulse_tlp(self):
+        """
+        Test: pulse with each TLP.
+        """
+        charset = string.ascii_letters
+        indicator_list = [
+            {'indicator': generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.DOMAIN.name, 'description': 'evil domain (unittests)'},
+            {'indicator': generate_rand_string(3, charset=charset) + "." + generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.HOSTNAME.name, 'description': 'evil hostname (unittests)'}
+        ]
+        name = "Pyclient-tlp-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
+        tlps = ['red', 'amber', 'green', 'white']
+        for tlp in tlps:
+            print("test_create_pulse_tlp: submitting pulse: {}".format({"name": name, "tlp": tlp}))
+            response = self.otx.create_pulse(name=name, public=False, tlp=tlp, indicators=indicator_list)
+            self.assertTrue(response.get('name', '') == name)
+            self.assertTrue(response.get('TLP', '') == tlp)
+            self.assertTrue(response.get('public') == False)
         return
 
 
