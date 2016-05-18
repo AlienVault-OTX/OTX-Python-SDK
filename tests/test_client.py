@@ -265,16 +265,19 @@ class TestPulseCreate(TestOTXv2):
             {'indicator': "14c04f88dc97aef3e9b516ef208a2bf5", 'type': IndicatorTypes.FILE_HASH_MD5},
             {'indicator': "48e04cb52f1077b5f5aab75baff6c27b0ee4ade1", 'type': IndicatorTypes.FILE_HASH_SHA1},
             {'indicator': "7522bc3e366c19ab63381bacd0f03eb09980ecb915ada08ae76d8c3e538600de", 'type': IndicatorTypes.FILE_HASH_SHA256},
-            {'indicator': "a060fe925aa888053010d1e195ef823a", 'type': IndicatorTypes.FILE_HASH_IMPHASH, "description": "Gen:Variant.Strictor.24454"},
+            {'indicator': "a060fe925aa888053010d1e195ef823a", 'type': IndicatorTypes.FILE_HASH_IMPHASH},
             {'indicator': "\sonas\share\samples\14\c0\4f\88\14c04f88dc97aef3e9b516ef208a2bf5", 'type': IndicatorTypes.FILE_PATH},
         ]
+        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         for indicator in indicator_list:
             validated_indicator = self.otx.validate_indicator(indicator.get('indicator', ''), indicator.get('type'))
             self.assertTrue('success' in validated_indicator.get('status', ''))
             validated_indicator_list.append(validated_indicator)
-        print("test_create_pulse_with_indicators: finished validating indicators, submitting pulse....")
-        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
-        self.otx.create_pulse(name=name, public=False, indicators=validated_indicator_list)
+        print("test_create_pulse_with_indicators: finished validating indicators.\nsubmitting pulse: {}".format({"name": name, "indicators": validated_indicator_list}))
+        response = self.otx.create_pulse(name=name, public=False, indicators=validated_indicator_list)
+        self.assertTrue(response.get('name', '') == name)
+        self.assertTrue(len(response.get('indicators', [])) == len(validated_indicator_list))
+        return
 
 
 class TestPulseCreateInvalidKey(TestOTXv2):
