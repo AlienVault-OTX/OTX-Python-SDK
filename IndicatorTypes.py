@@ -7,11 +7,12 @@ class IndicatorTypes(object):
     :var api_support if true, indicator api is supported for this type.
     :var sections indicator List of valid sections for this type (api is split into sections).
     """
-    def __init__(self, name, description, api_support=False, sections=None):
+    def __init__(self, name, description, api_support=False, sections=None, slug=None):
         self.name = name
         self.description = description
         self.api_support = api_support
         self.sections = sections
+        self.slug = slug
 
     def __str__(self):
         return "<IndicatorTypes: {}>".format(self.name)
@@ -23,39 +24,47 @@ class IndicatorTypes(object):
 IPv4 = IndicatorTypes(name="IPv4",
                       description="An IPv4 address indicating the online location of a server or other computer.",
                       api_support=True,
-                      sections=["general", "reputation", "geo", "malware", "address_list", "url_list"])
+                      sections=["general", "reputation", "geo", "malware", "address_list", "url_list"],
+                      slug="IPv4")
 IPv6 = IndicatorTypes(name="IPv6",
                       description="An IPv6 address indicating the online location of a server or other computer.",
                       api_support=True,
-                      sections=["general", "reputation", "geo", "malware", "address_list", "url_list"])
+                      sections=["general", "reputation", "geo", "malware", "address_list", "url_list"],
+                      slug="IPv6")
 DOMAIN = IndicatorTypes(name="domain",
                         description="A domain name for a website or server. Domains encompass a series of hostnames.",
                         api_support=True,
-                        sections=["general", "geo", "malware", "url_list", "address_list"])
+                        sections=["general", "geo", "malware", "url_list", "address_list"],
+                        slug="domain")
 HOSTNAME = IndicatorTypes(name="hostname",
                           description="The hostname for a server located within a domain.",
                           api_support=True,
-                          sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"])
+                          sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"],
+                          slug="hostname")
 EMAIL = IndicatorTypes(name="email", description="An email associated with suspicious activity.")
 URL = IndicatorTypes(name="URL",
                      description=" Uniform Resource Location (URL) summarizing the online location of a file or resource.",
                      api_support=True,
-                     sections=["general", "url_list"])
+                     sections=["general", "url_list"],
+                     slug="url")
 URI = IndicatorTypes(name="URI",
                      description="Uniform Resource Indicator (URI) describing"
                                  " the explicit path to a file hosted online.")
 FILE_HASH_MD5 = IndicatorTypes(name="FileHash-MD5",
                                description="A MD5-format hash that summarizes the architecture and content of a file.",
                                api_support=True,
-                               sections=["general", "analysis", "malware", "passive_dns", "url_list"])
+                               sections=["general", "analysis", "malware", "passive_dns", "url_list"],
+                               slug="file")
 FILE_HASH_SHA1 = IndicatorTypes(name="FileHash-SHA1",
                                 description="A SHA-format hash that summarizes the architecture and content of a file.",
                                 api_support=True,
-                                sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"])
+                                sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"],
+                                slug="file")
 FILE_HASH_SHA256 = IndicatorTypes(name="FileHash-SHA256",
                                   description="A SHA-256-format hash that summarizes the architecture and content of a file.",
                                   api_support=True,
-                                  sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"])
+                                  sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"],
+                                  slug="file")
 FILE_HASH_PEHASH = IndicatorTypes(name="FileHash-PEHASH",
                                   description="A PEPHASH-format hash that summarizes the"
                                               " architecture and content of a file.")
@@ -75,7 +84,8 @@ CVE = IndicatorTypes(name="CVE",
                                  " describing a software vulnerability that can be"
                                  " exploited to engage in malicious activity.",
                      api_support=True,
-                     sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"])
+                     sections=["general", "geo", "reputation", "malware", "passive_dns", "url_list"],
+                     slug="cve")
 
 # all_types list of supported IOC types for pulse indicators
 all_types = [IPv4,

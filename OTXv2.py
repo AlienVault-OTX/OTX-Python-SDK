@@ -211,7 +211,7 @@ class OTXv2(object):
         """
         print ("create_indicator_detail_url indicator_type: {}, indicator: {}, section: {}".format(indicator_type, indicator, section))
         indicator_url = self.create_url(INDICATOR_DETAILS)
-        indicator_url = indicator_url + "{indicator_type}/{indicator}/{section}".format(indicator_type=indicator_type.name,
+        indicator_url = indicator_url + "{indicator_type}/{indicator}/{section}".format(indicator_type=indicator_type.slug,
                                                                                         indicator=indicator,
                                                                                         section=section)
         return indicator_url
