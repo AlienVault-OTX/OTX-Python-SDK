@@ -74,7 +74,10 @@ class TestSubscriptions(TestOTXv2):
             print(u"test_getsince next pulse: {0}".format(pulse.get('name', '')))
             pulse_modified = pulse.get('modified', None)
             self.assertIsNotNone(pulse_modified)
-            pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
+            try:
+                pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
+            except ValueError:
+                pulse_modified_dt = datetime.datetime.strptime(pulse_modified, '%Y-%m-%dT%H:%M:%S')
             self.assertGreaterEqual(pulse_modified_dt, three_months_dt)
 
     def test_getsince_iter(self):
@@ -87,7 +90,10 @@ class TestSubscriptions(TestOTXv2):
             self.assertTrue(pulse.get('name', None))
             pulse_modified = pulse.get('modified', None)
             self.assertIsNotNone(pulse_modified)
-            pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
+            try:
+                pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
+            except ValueError:
+                pulse_modified_dt = datetime.datetime.strptime(pulse_modified, '%Y-%m-%dT%H:%M:%S')
             self.assertGreaterEqual(pulse_modified_dt, three_months_dt)
 
 
