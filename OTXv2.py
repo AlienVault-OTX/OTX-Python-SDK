@@ -114,7 +114,6 @@ class OTXv2(object):
                     encoded_error = e.read()
                     decoded_error = encoded_error.decode('utf-8')
                     json.loads(decoded_error)
-                    print("raising badrequest with {}".format(decoded_error))
                     raise BadRequest(decoded_error)
         return {}
 
@@ -209,7 +208,6 @@ class OTXv2(object):
         :param section: Section from IndicatorTypes.section.  Default is general info
         :return: formatted URL string
         """
-        print ("create_indicator_detail_url indicator_type: {}, indicator: {}, section: {}".format(indicator_type, indicator, section))
         indicator_url = self.create_url(INDICATOR_DETAILS)
         indicator_url = indicator_url + "{indicator_type}/{indicator}/{section}".format(indicator_type=indicator_type.slug,
                                                                                         indicator=indicator,
