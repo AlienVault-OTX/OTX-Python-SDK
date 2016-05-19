@@ -51,7 +51,7 @@ class OTXv2(object):
         self.key = api_key
         self.server = server
         self.proxy = proxy
-        self.sdk = 'OTX Python {}/1.0'.format(project)
+        self.sdk = 'OTX Python {}/1.1'.format(project)
 
     def get(self, url):
         """
@@ -137,6 +137,16 @@ class OTXv2(object):
             :param indicators(list of objects) IOCs to include in pulse
         :return: request body response
         :raises BadRequest (400) On failure, BadRequest will be raised containing the invalid fields.
+
+        Examples:
+        Python kwargs can be used in two ways.  You can call create_pulse passing a dict, or named arguments.
+        With a dict:
+            otx = OTXv2("mysecretkey")  # replace with your api key
+            body = {'name': pulse_name, 'public': False, 'indicators': indicator_list, 'TLP': 'green', ...}
+            otx.create_pulse(**body)  # the dict will be expanded into the args.
+        Or with named args:
+            otx = OTXv2("mysecretkey")  # replace with your api key
+            otx.create_pulse(name=pulse_name, public=False, indicators=indicator_list, TLP='green')
         """
         body = {
             'name': kwargs.get('name', ''),
@@ -357,9 +367,9 @@ class OTXv2(object):
 
     def get_pulse_indicators(self, pulse_id):
         """
-        For a given pulse_id, get indicators of compromise
-        :param pulse_id: timestamp to filter returned activity
-        :return: Pulse as dict
+        For a given pulse_id, get list of indicators (IOCs)
+        :param pulse_id: Object ID specify which pulse to get indicators from
+        :return: Indicator list
         """
         pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators")
         pulse_indicators_url = pulse_url
@@ -368,7 +378,7 @@ class OTXv2(object):
 
     def get_indicator_details_by_section(self, indicator_type, indicator, section='general'):
         """
-        Obtain a specific section for an indicator.
+        The Indicator details endpoints are split into sections.  Obtain a specific section for an indicator.
         :param indicator_type: IndicatorType instance
         :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
         :param section: Section from IndicatorTypes.section.  Default is general info
