@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/AlienVault-Labs/OTX-Python-SDK.svg)](https://travis-ci.org/AlienVault-Labs/OTX-Python-SDK)
 # OTX-Python-SDK
 Open Threat Exchange is an open community that allows participants to learn about the latest threats, research indicators of compromise observed in their environments, share threats they have identified, and automatically update their security infrastructure with the latest indicators to defend their environment.
 
@@ -6,8 +7,6 @@ OTX Direct Connect agents provide a way to automatically update your security in
 
 # OTX DirectConnect Python SDK
 
-
-[![Build Status](https://travis-ci.org/AlienVault-Labs/OTX-Python-SDK.svg)](https://travis-ci.org/AlienVault-Labs/OTX-Python-SDK)
 
 OTX DirectConnect provides a mechanism to automatically pull indicators of compromise from the Open Threat Exchange portal into your environment.  The DirectConnect API provides access to all _Pulses_ that you have subscribed to in Open Threat Exchange (https://otx.alienvault.com).
 
