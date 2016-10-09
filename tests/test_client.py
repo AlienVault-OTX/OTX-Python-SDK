@@ -17,6 +17,7 @@ class TestOTXv2(unittest.TestCase):
     """
     Base class configure API Key to use on a per test basis.
     """
+
     def setUp(self, **kwargs):
         provided_key = kwargs.get('api_key', '')
         if provided_key:
@@ -26,10 +27,27 @@ class TestOTXv2(unittest.TestCase):
         self.otx = OTXv2(self.api_key)
 
 
+class TestValidateAPIKey(TestOTXv2):
+    """
+    Confirm expected boolean results for validating the API Key.
+    """
+
+    def test_validate_valid_key(self):
+        super(TestValidateAPIKey, self).setUp()
+        res = self.otx.validate_api_key()
+        self.assertTrue(res)
+
+    def test_validate_invalid_key(self):
+        super(TestValidateAPIKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
+        res = self.otx.validate_api_key()
+        self.assertFalse(res)
+
+
 class TestSubscriptionsInvalidKey(TestOTXv2):
     """
     Confirm InvalidAPIKey class is raised for API Key failures
     """
+
     def setUp(self, **kwargs):
         super(TestSubscriptionsInvalidKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
 
@@ -42,6 +60,7 @@ class TestSubscriptions(TestOTXv2):
     """
     Confirm that given a valid API Key, we can obtain threat intelligence subscriptions.
     """
+
     def setUp(self, **kwargs):
         super(TestSubscriptions, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
