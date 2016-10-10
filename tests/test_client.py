@@ -4,7 +4,7 @@ import os
 import pprint
 import string
 
-from tests.utils import generate_rand_string
+from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey, BadRequest
 import IndicatorTypes
 

@@ -82,8 +82,11 @@ class OTXv2(object):
                     raise InvalidAPIKey("Invalid API Key")
                 elif e.code == 400:
                     raise BadRequest("Bad Request")
+                else:
+                    raise e
             else:
                 raise e
+
         data = response.read().decode('utf-8')
         json_data = json.loads(data)
         return json_data
@@ -123,6 +126,10 @@ class OTXv2(object):
                     decoded_error = encoded_error.decode('utf-8')
                     json.loads(decoded_error)
                     raise BadRequest(decoded_error)
+                else:
+                    raise e
+            else:
+                raise e
 
         data = response.read().decode('utf-8')
         json_data = json.loads(data)
