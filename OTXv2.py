@@ -55,9 +55,10 @@ class OTXv2(object):
 
     def get(self, url):
         """
-        Internal API for GET request on a OTX URL
+        Internal API for GET request on a OTX URL.
+
         :param url: URL to retrieve
-        :return: response in JSON object form
+        :return: response body in JSON object form
         """
         if self.proxy:
             proxy = ProxyHandler({'http': self.proxy})
@@ -85,10 +86,11 @@ class OTXv2(object):
 
     def post(self, url, body):
         """
-        Internal API for POST request on a OTX URL
+        Internal API for POST request on a OTX URL.
+
         :param url: URL to retrieve
         :param body: HTTP Body to send in request
-        :return: response as dict
+        :return: response body in JSON object form
         """
         request = Request(url)
         request.add_header('X-OTX-API-KEY', self.key)
@@ -120,6 +122,7 @@ class OTXv2(object):
     def create_pulse(self, **kwargs):
         """
         Create a pulse via HTTP Post (Content Type: application/json).
+
         Notes:
             If `TLP` is one of: ['red', 'amber'], `public` must be false.
             `name` field is required
@@ -136,7 +139,7 @@ class OTXv2(object):
             :param references(list of strings, preferably URLs) external references for this threat
             :param indicators(list of objects) IOCs to include in pulse
         :return: request body response
-        :raises BadRequest (400) On failure, BadRequest will be raised containing the invalid fields.
+        :raises BadRequest: on 400 HTTP failure, containing the invalid fields.
 
         Examples:
         Python kwargs can be used in two ways.  You can call create_pulse passing a dict, or named arguments.
@@ -164,6 +167,8 @@ class OTXv2(object):
 
     def validate_indicator(self, indicator_type, indicator, description=""):
         """
+        Validate the indicator type and POST body with the API.
+
         The goal of validate_indicator is to aid you in pulse creation.  Use this method on each indicator before
         calling create_pulse to ensure success in the create call.  If you supply invalid indicators in a create call,
         the pulse will not be created.
@@ -171,7 +176,8 @@ class OTXv2(object):
         :param indicator: indicator value (string)
         :param indicator_type: an IndicatorTypes object (i.e. IndicatorTypes.DOMAIN)
         :param description: a short descriptive string can be sent to the validator for length checking
-        :return:
+        :return: response body in JSON object form
+        :raises ValueError: if indicator or indicator_type are not supplied, and if the indicator type is invalid.
         """
         if not indicator:
             raise ValueError("please supply `indicator` when calling validate_indicator")
@@ -192,9 +198,10 @@ class OTXv2(object):
         return response
 
     def create_url(self, url_path, **kwargs):
-        """ Turn a path into a valid fully formatted URL. Supports query parameter formatting as well.
+        """
+        Turn a path into a valid fully formatted URL. Supports query parameter formatting as well.
 
-        :param url_path: Request path (i.e. "/search/pulses")
+        :param url_path: request path (i.e. "/search/pulses")
         :param kwargs: key value pairs to be added as query parameters (i.e. limit=10, page=5)
         :return: a formatted url (i.e. "/search/pulses")
         """
@@ -209,7 +216,8 @@ class OTXv2(object):
         return uri
 
     def create_indicator_detail_url(self, indicator_type, indicator, section='general'):
-        """ Build a valid indicator detail url.  This api contains all data we have about indicators.
+        """
+        Build a valid indicator detail url. This api contains all data we have about indicators.
 
         Only indicators with IndicatorTypes.api_support = True should be used.
 
@@ -227,7 +235,8 @@ class OTXv2(object):
     def getall(self, limit=20):
         """
         Get all pulses user is subscribed to.
-        :param limit: The page size to retrieve in a single request
+
+        :param limit: the page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
         pulses = []
@@ -242,6 +251,7 @@ class OTXv2(object):
     def getall_iter(self, limit=20):
         """
         Get all pulses user is subscribed to, yield results.
+
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
@@ -255,8 +265,9 @@ class OTXv2(object):
     def getsince(self, timestamp, limit=20):
         """
         Get all pulses modified since a particular time.
+
         :param timestamp: iso formatted date time string
-        :param limit: Maximum number of results to return in a single request
+        :param limit: maximum number of results to return in a single request
         :return: the consolidated set of pulses for the user
         """
         pulses = []
@@ -271,8 +282,9 @@ class OTXv2(object):
     def getsince_iter(self, timestamp, limit=20):
         """
         Get all pulses modified since a particular time, yield results.
+
         :param timestamp: iso formatted date time string
-        :param limit: Maximum number of results to return in a single request
+        :param limit: maximum number of results to return in a single request
         :return: the consolidated set of pulses for the user
         """
         next_page_url = self.create_url(SUBSCRIBED, limit=limit, modified_since=timestamp)
@@ -285,9 +297,10 @@ class OTXv2(object):
     def search_pulses(self, query, max_results=25):
         """
         Get all pulses with text matching `query`.
-        :param query: The text to search for
-        :param max_results: Limit the number of pulses returned in response
-        :return: All pulses matching `query`
+
+        :param query: the text to search for
+        :param max_results: limit the number of pulses returned in response
+        :return: all pulses matching `query`
         """
         search_pulses_url = self.create_url(SEARCH_PULSES, q=query, page=1, limit=20)
         return self._get_paginated_resource(search_pulses_url, max_results=max_results)
@@ -295,9 +308,10 @@ class OTXv2(object):
     def search_users(self, query, max_results=25):
         """
         Get all pulses with text matching `query`.
-        :param query: The text to search for
-        :param max_results: Limit the number of users returned in response
-        :return: List of users with username matching `query`
+
+        :param query: the text to search for
+        :param max_results: limit the number of users returned in response
+        :return: list of users with username matching `query`
         """
         search_users_url = self.create_url(SEARCH_USERS, q=query, limit=20, page=1)
         return self._get_paginated_resource(search_users_url, max_results=max_results)
@@ -307,7 +321,7 @@ class OTXv2(object):
         Get all pages of a particular API resource, and retain additional fields.
 
         :param url: URL for first page of a paginated list api. Default is list subscribed pulses.
-        :param max_results: Limit the number of objects returned.
+        :param max_results: limit the number of objects returned.
         :return: results and additional fields as dict
         """
         results = []
@@ -329,7 +343,9 @@ class OTXv2(object):
     def get_all_indicators(self, indicator_types=IndicatorTypes.all_types):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
+
         By default returns all IndicatorTypes.
+
         :param indicator_types: IndicatorTypes to return
         :return: yields the indicator object for use
         """
@@ -341,9 +357,10 @@ class OTXv2(object):
 
     def getevents_since(self, timestamp, limit=20):
         """
-        Get all events (activity) created or updated since a timestamp
-        :param timestamp: ISO formatted datetime string to restrict results (not older than timestamp).
-        :param limit: The page size to retrieve in a single request
+        Get all events (activity) created or updated since a timestamp.
+
+        :param timestamp: iso formatted datetime string to restrict results (not older than timestamp)
+        :param limit: ihe page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
         events = []
@@ -358,8 +375,9 @@ class OTXv2(object):
     def get_pulse_details(self, pulse_id):
         """
         For a given pulse_id, get the details of an arbitrary pulse.
+
         :param pulse_id: object id for pulse
-        :return: Pulse as dict
+        :return: pulse as dict
         """
         pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id))
         meta_data = self.get(pulse_url)
@@ -367,9 +385,10 @@ class OTXv2(object):
 
     def get_pulse_indicators(self, pulse_id):
         """
-        For a given pulse_id, get list of indicators (IOCs)
-        :param pulse_id: Object ID specify which pulse to get indicators from
-        :return: Indicator list
+        For a given pulse_id, get list of indicators (IOCs).
+
+        :param pulse_id: object id for pulse
+        :return: indicators as dict
         """
         pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators")
         pulse_indicators_url = pulse_url
@@ -379,11 +398,12 @@ class OTXv2(object):
     def get_indicator_details_by_section(self, indicator_type, indicator, section='general'):
         """
         The Indicator details endpoints are split into sections.  Obtain a specific section for an indicator.
+
         :param indicator_type: IndicatorType instance
         :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
         :param section: Section from IndicatorTypes.section.  Default is general info
-        :return: Return indicator details as dict
-
+        :return: indicator details as dict
+        :raises TypeError: if the indicator_type and/or the section are not supported
         """
         if not indicator_type.api_support:
             raise TypeError("IndicatorType {0} is not currently supported.".format(indicator_type))
@@ -396,9 +416,10 @@ class OTXv2(object):
     def get_indicator_details_full(self, indicator_type, indicator):
         """
         Obtain all sections for an indicator.
+
         :param indicator_type: IndicatorType instance
         :param indicator: String indicator (i.e. "69.73.130.198", "mail.vspcord.com")
-        :return: dict with sections as keys and results for each call as values.
+        :return: dict with sections as keys and results for each call as values
         """
         indicator_dict = {}
         for section in indicator_type.sections:
