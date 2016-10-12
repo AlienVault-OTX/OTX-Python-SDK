@@ -19,11 +19,13 @@ VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)    # in
 
 try:
     # For Python2
-    from urllib2 import URLError, HTTPError, build_opener, ProxyHandler, urlopen, Request
+    from urllib2 import URLError, HTTPError, build_opener, ProxyHandler, Request
+    from urllib import urlencode
 except ImportError:
     # For Python3
     from urllib.error import URLError, HTTPError
-    from urllib.request import build_opener, ProxyHandler, urlopen, Request
+    from urllib.request import build_opener, ProxyHandler, Request
+    from urllib.parse import urlencode
 
 
 class InvalidAPIKey(Exception):
@@ -52,6 +54,10 @@ class OTXv2(object):
         self.server = server
         self.proxy = proxy
         self.sdk = 'OTX Python {}/1.1'.format(project)
+        self.headers = {
+            'X-OTX-API-KEY': self.key,
+            'User-Agent': self.sdk
+        }
 
     def get(self, url):
         """
@@ -59,26 +65,26 @@ class OTXv2(object):
         :param url: URL to retrieve
         :return: response in JSON object form
         """
+        opener = build_opener()
         if self.proxy:
             proxy = ProxyHandler({'http': self.proxy})
-            request = build_opener(proxy)
-        else:
-            request = build_opener()
-        request.addheaders = [
-            ('X-OTX-API-KEY', self.key),
-            ('User-Agent', self.sdk)
-        ]
-        response = None
+            opener.add_handler(proxy)
+
+        request = Request(url, headers=self.headers)
+
         try:
-            response = request.open(url)
+            response = opener.open(request)
         except URLError as e:
             if isinstance(e, HTTPError):
                 if e.code == 403:
                     raise InvalidAPIKey("Invalid API Key")
                 elif e.code == 400:
                     raise BadRequest("Bad Request")
+                else:
+                    raise e
             else:
                 raise e
+
         data = response.read().decode('utf-8')
         json_data = json.loads(data)
         return json_data
@@ -90,22 +96,23 @@ class OTXv2(object):
         :param body: HTTP Body to send in request
         :return: response as dict
         """
-        request = Request(url)
-        request.add_header('X-OTX-API-KEY', self.key)
-        request.add_header('User-Agent', self.sdk)
+        opener = build_opener()
+        if self.proxy:
+            proxy = ProxyHandler({'http': self.proxy})
+            opener.add_handler(proxy)
+
+        request = Request(url, headers=self.headers)
         request.add_header("Content-Type", "application/json")
+
         method = "POST"
         request.get_method = lambda: method
         if body:
             try:  # python2
                 request.add_data(json.dumps(body))
-            except AttributeError as ae:  # python3
+            except AttributeError:  # python3
                 request.data = json.dumps(body).encode('utf-8')
         try:
-            response = urlopen(request)
-            data = response.read().decode('utf-8')
-            json_data = json.loads(data)
-            return json_data
+            response = opener.open(request)
         except URLError as e:
             if isinstance(e, HTTPError):
                 if e.code == 403:
@@ -115,7 +122,14 @@ class OTXv2(object):
                     decoded_error = encoded_error.decode('utf-8')
                     json.loads(decoded_error)
                     raise BadRequest(decoded_error)
-        return {}
+                else:
+                    raise e
+            else:
+                raise e
+
+        data = response.read().decode('utf-8')
+        json_data = json.loads(data)
+        return json_data
 
     def create_pulse(self, **kwargs):
         """
@@ -200,12 +214,7 @@ class OTXv2(object):
         """
         uri = url_path.format(self.server)
         if kwargs.items():
-            uri += "?"
-            for parameter, value in kwargs.items():
-                uri += parameter
-                uri += "="
-                uri += str(value)
-                uri += "&"
+            uri += '?' + urlencode(kwargs)
         return uri
 
     def create_indicator_detail_url(self, indicator_type, indicator, section='general'):
