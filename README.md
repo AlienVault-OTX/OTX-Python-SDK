@@ -14,6 +14,7 @@ OTX DirectConnect provides a mechanism to automatically pull indicators of compr
 2. Run (from the root directory)   ``` pip install . ```   or ``` python setup.py install ```
 3. Integrate into your codebase (see Python Notebook example below)
 
+For more information about the particular API calls see  https://otx.alienvault.com/api (Endpoint details on 'docs' tab)
 
 ## Installation and Python Notebook Usage
 1. Clone this repo
