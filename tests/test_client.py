@@ -3,14 +3,35 @@ import datetime
 import os
 import pprint
 import string
+import requests
+import json
 
 from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey, BadRequest
 import IndicatorTypes
 
-ALIEN_API_APIKEY = os.getenv('X_OTX_API_KEY', "mysecretkey")
-STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 
+STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
+ALIEN_DEV_SERVER = os.getenv('X_OTX_DEV_SERVER', "")
+ALIEN_API_APIKEY = ""
+
+"""
+Create a user, and get the API key
+"""
+def createUserGetApiKey(username, password, email):
+    r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/setup/', json={"users": [{ "username": username, "password": password, "email": email}]})
+    r = requests.post(ALIEN_DEV_SERVER + 'auth/login', json={"username": username, "password" : password})
+    j = json.loads(r.text)
+    uiKey = j['key']
+    r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': uiKey})
+    j = json.loads(r.text)
+    apiKey = j['api_keys'][0]['api_key']
+    print(u"created api key: {0}".format(apiKey))
+    return apiKey
+
+def deleteUser(username):
+    r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  {"user": username } })
+    j = json.loads(r.text)
 
 # Class names should start with "Test"
 class TestOTXv2(unittest.TestCase):
@@ -23,7 +44,11 @@ class TestOTXv2(unittest.TestCase):
             self.api_key = provided_key
         else:
             self.api_key = ALIEN_API_APIKEY
-        self.otx = OTXv2(self.api_key)
+
+        self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
+
+
+
 
 
 class TestSubscriptionsInvalidKey(TestOTXv2):
@@ -114,7 +139,6 @@ class TestSearch(TestOTXv2):
         self.assertIsNotNone(pulse.get('id', None))
         self.assertIsNotNone(pulse.get('tags', None))
         self.assertIsNotNone(pulse.get('references', None))
-        self.assertTrue(res.get('users_count', -1) >= 0)
         self.assertIsNotNone(res.get('exact_match'))
 
     def test_exact_match_domain(self):
@@ -134,6 +158,7 @@ class TestSearch(TestOTXv2):
         users = res.get('results')
         first_user = users[0]
         self.assertTrue(first_user.get('username', '') != '')
+        self.assertTrue(res.get('count', -1) >= 0)
 
 
 class TestEvents(TestOTXv2):
@@ -361,4 +386,6 @@ class TestValidateIndicator(TestOTXv2):
             self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
 
 if __name__ == '__main__':
+    ALIEN_API_APIKEY = createUserGetApiKey("qatester-github", "password", "qatester+github@aveng.us")
     unittest.main()
+    deleteUser("qatester-github")
