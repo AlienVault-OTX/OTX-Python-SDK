@@ -36,8 +36,9 @@ def deleteUser(username):
 # Class names should start with "Test"
 class TestOTXv2(unittest.TestCase):
     """
-    Base class configure API Key to use on a per test basis.
+    Base class to setup the API Key to use on a per test basis.
     """
+
     def setUp(self, **kwargs):
         provided_key = kwargs.get('api_key', '')
         if provided_key:
@@ -51,24 +52,49 @@ class TestOTXv2(unittest.TestCase):
 
 
 
-class TestSubscriptionsInvalidKey(TestOTXv2):
+class TestValidateAPIKey(TestOTXv2):
     """
-    Confirm InvalidAPIKey class is raised for API Key failures
+    Confirm expected boolean results for calling the validate_api_key() method.
     """
-    def setUp(self, **kwargs):
-        super(TestSubscriptionsInvalidKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
 
-    def test_getall(self):
+    def test_validate_valid_key(self):
+        super(TestValidateAPIKey, self).setUp()
+        res = self.otx.validate_api_key()
+        self.assertTrue(res)
+
+    def test_validate_invalid_key(self):
+        super(TestValidateAPIKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
+        res = self.otx.validate_api_key()
+        self.assertFalse(res)
+
+
+class TestInvalidAPIKeyException(TestOTXv2):
+    """
+    Confirm InvalidAPIKey exception is raised for API Key failures in gets and posts.
+    """
+
+    def setUp(self, **kwargs):
+        super(TestInvalidAPIKeyException, self).setUp(**{'api_key': generate_rand_string(length=64)})
+
+    def test_getall_invalid_key(self):
         with self.assertRaises(InvalidAPIKey):
             self.otx.getall()
+
+    def test_create_pulse_invalid_key(self):
+        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
+        print("test_create_pulse_simple submitting pulse: " + name)
+        with self.assertRaises(InvalidAPIKey):
+            self.otx.create_pulse(name=name,
+                                  public=False,
+                                  indicators=[],
+                                  tags=[],
+                                  references=[])
 
 
 class TestSubscriptions(TestOTXv2):
     """
-    Confirm that given a valid API Key, we can obtain threat intelligence subscriptions.
+    Confirm we can obtain threat intelligence subscriptions.
     """
-    def setUp(self, **kwargs):
-        super(TestSubscriptions, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
     def test_getall(self):
         pulses = self.otx.getall()
@@ -123,8 +149,9 @@ class TestSubscriptions(TestOTXv2):
 
 
 class TestSearch(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestSearch, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can search pulses and users.
+    """
 
     def test_search_pulses_simple(self):
         res = self.otx.search_pulses("Russian")
@@ -162,8 +189,9 @@ class TestSearch(TestOTXv2):
 
 
 class TestEvents(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestEvents, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can obtain events (activity) since a timestamp.
+    """
 
     def test_getevents_since(self):
         three_months_dt = (datetime.datetime.now() - datetime.timedelta(days=90))
@@ -178,8 +206,9 @@ class TestEvents(TestOTXv2):
 
 
 class TestIndicatorTypes(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestIndicatorTypes, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can obtain [selected] indicators contained within the subscribed pulses.
+    """
 
     def test_get_all_indicators(self):
         indicator_gen = self.otx.get_all_indicators()
@@ -201,8 +230,9 @@ class TestIndicatorTypes(TestOTXv2):
 
 
 class TestPulseDetails(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestPulseDetails, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can obtain a pulse's details and indicators.
+    """
 
     def test_get_pulse_details(self):
         # get a pulse from search to use as testcase
@@ -240,8 +270,9 @@ class TestPulseDetails(TestOTXv2):
 
 
 class TestIndicatorDetails(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestIndicatorDetails, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can obtain indicator details by type.
+    """
 
     def test_get_indicator_details_IPv4_by_section(self):
         print("test_get_indicator_details_IPv4_by_section")
@@ -260,8 +291,9 @@ class TestIndicatorDetails(TestOTXv2):
 
 
 class TestPulseCreate(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestPulseCreate, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can create pulses and expected raised Exceptions when the request body is invalid.
+    """
 
     def test_create_pulse_simple(self):
         name = "Pyclient-simple-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
@@ -346,28 +378,14 @@ class TestPulseCreate(TestOTXv2):
             response = self.otx.create_pulse(name=name, public=False, tlp=tlp, indicators=indicator_list)
             self.assertTrue(response.get('name', '') == name)
             self.assertTrue(response.get('TLP', '') == tlp)
-            self.assertTrue(response.get('public') == False)
+            self.assertFalse(response.get('public'))
         return
 
 
-class TestPulseCreateInvalidKey(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestPulseCreateInvalidKey, self).setUp(**{'api_key': "ALIEN_API_APIKEY"})
-
-    def test_create_pulse_invalid_key(self):
-        name = "Pyclient-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
-        print("test_create_pulse_simple submitting pulse: " + name)
-        with self.assertRaises(InvalidAPIKey):
-            self.otx.create_pulse(name=name,
-                                  public=False,
-                                  indicators=[],
-                                  tags=[],
-                                  references=[])
-
-
 class TestValidateIndicator(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestValidateIndicator, self).setUp(**{'api_key': ALIEN_API_APIKEY})
+    """
+    Confirm we can validate indicator types.
+    """
 
     def test_validate_valid_domain(self):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
@@ -384,6 +402,7 @@ class TestValidateIndicator(TestOTXv2):
         print("test_validate_invalid_domain submitting indicator: " + indicator)
         with self.assertRaises(BadRequest):
             self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
+
 
 if __name__ == '__main__':
     ALIEN_API_APIKEY = createUserGetApiKey("qatester-github", "password", "qatester+github@aveng.us")
