@@ -29,4 +29,7 @@ For more information about the particular API calls see  https://otx.alienvault.
 3. Run notebook
 
 ```jupyter notebook howto_use_python_otx_api.ipynb```
+ 
+# Example Code
 
+Please see tests/test_client.py and https://otx.alienvault.com/api/ for examples of the SDK in use
