@@ -36,8 +36,9 @@ def deleteUser(username):
 # Class names should start with "Test"
 class TestOTXv2(unittest.TestCase):
     """
-    Base class configure API Key to use on a per test basis.
+    Base class to setup the API Key to use on a per test basis.
     """
+
     def setUp(self, **kwargs):
         provided_key = kwargs.get('api_key', '')
         if provided_key:
@@ -53,8 +54,9 @@ class TestOTXv2(unittest.TestCase):
 
 class TestSubscriptionsInvalidKey(TestOTXv2):
     """
-    Confirm InvalidAPIKey class is raised for API Key failures
+    Confirm InvalidAPIKey exception is raised for API Key failures in gets.
     """
+
     def setUp(self, **kwargs):
         super(TestSubscriptionsInvalidKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
 
@@ -65,8 +67,9 @@ class TestSubscriptionsInvalidKey(TestOTXv2):
 
 class TestSubscriptions(TestOTXv2):
     """
-    Confirm that given a valid API Key, we can obtain threat intelligence subscriptions.
+    Confirm we can obtain threat intelligence subscriptions.
     """
+
     def setUp(self, **kwargs):
         super(TestSubscriptions, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -123,6 +126,10 @@ class TestSubscriptions(TestOTXv2):
 
 
 class TestSearch(TestOTXv2):
+    """
+    Confirm we can search pulses and users.
+    """
+
     def setUp(self, **kwargs):
         super(TestSearch, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -162,6 +169,10 @@ class TestSearch(TestOTXv2):
 
 
 class TestEvents(TestOTXv2):
+    """
+    Confirm we can obtain events (activity) since a timestamp.
+    """
+
     def setUp(self, **kwargs):
         super(TestEvents, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -178,6 +189,10 @@ class TestEvents(TestOTXv2):
 
 
 class TestIndicatorTypes(TestOTXv2):
+    """
+    Confirm we can obtain [selected] indicators contained within the subscribed pulses.
+    """
+
     def setUp(self, **kwargs):
         super(TestIndicatorTypes, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -201,6 +216,10 @@ class TestIndicatorTypes(TestOTXv2):
 
 
 class TestPulseDetails(TestOTXv2):
+    """
+    Confirm we can obtain a pulse's details and indicators.
+    """
+
     def setUp(self, **kwargs):
         super(TestPulseDetails, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -240,6 +259,10 @@ class TestPulseDetails(TestOTXv2):
 
 
 class TestIndicatorDetails(TestOTXv2):
+    """
+    Confirm we can obtain indicator details by type.
+    """
+
     def setUp(self, **kwargs):
         super(TestIndicatorDetails, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -260,6 +283,10 @@ class TestIndicatorDetails(TestOTXv2):
 
 
 class TestPulseCreate(TestOTXv2):
+    """
+    Confirm we can create pulses and expected raised Exceptions when the request body is invalid.
+    """
+
     def setUp(self, **kwargs):
         super(TestPulseCreate, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
@@ -351,6 +378,10 @@ class TestPulseCreate(TestOTXv2):
 
 
 class TestPulseCreateInvalidKey(TestOTXv2):
+    """
+    Confirm InvalidAPIKey exception is raised for API Key failures in posts.
+    """
+
     def setUp(self, **kwargs):
         super(TestPulseCreateInvalidKey, self).setUp(**{'api_key': "ALIEN_API_APIKEY"})
 
@@ -366,6 +397,10 @@ class TestPulseCreateInvalidKey(TestOTXv2):
 
 
 class TestValidateIndicator(TestOTXv2):
+    """
+    Confirm we can validate indicator types.
+    """
+
     def setUp(self, **kwargs):
         super(TestValidateIndicator, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
