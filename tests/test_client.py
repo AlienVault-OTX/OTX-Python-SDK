@@ -24,6 +24,8 @@ def createUserGetApiKey(username, password, email):
     j = json.loads(r.text)
     uiKey = j['key']
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': uiKey})
+    print uiKey
+    print username
     j = json.loads(r.text)
     apiKey = j['api_keys'][0]['api_key']
     print(u"created api key: {0}".format(apiKey))
@@ -402,6 +404,7 @@ class TestValidateIndicator(TestOTXv2):
             self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
 
 if __name__ == '__main__':
-    ALIEN_API_APIKEY = createUserGetApiKey("qatester-github", "password", "qatester+github@aveng.us")
+    username = "qatester-github-" + generate_rand_string(8, charset=string.hexdigits).lower()
+    ALIEN_API_APIKEY = createUserGetApiKey(username, "password", username + "@aveng.us")
     unittest.main()
-    deleteUser("qatester-github")
+    deleteUser(username)
