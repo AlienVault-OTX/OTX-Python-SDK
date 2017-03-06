@@ -32,4 +32,12 @@ For more information about the particular API calls see  https://otx.alienvault.
  
 # Example Code
 
-Please see tests/test_client.py and https://otx.alienvault.com/api/ for examples of the SDK in use
+Please see tests/test_client.py and https://otx.alienvault.com/api/ for examples of the SDK in use.
+A trivial example is below:
+```
+from OTXv2 import OTXv2
+otx = OTXv2("API_KEY")
+indicators = otx.get_pulse_indicators("pulse_id")
+for indicator in indicators:
+    print indicator["indicator"] + indicator["type"]
+```

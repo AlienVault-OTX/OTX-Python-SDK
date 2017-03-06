@@ -1,0 +1,14 @@
+[
+{
+	"indicator": "two.com",
+	"type": "Domain"
+},
+{
+	"indicator": "three.com",
+	"type": "Domain"
+},
+{
+	"indicator": "four.com",
+	"type": "Domain"
+}
+]
