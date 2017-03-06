@@ -15,21 +15,12 @@ feed_url = 'https://feodotracker.abuse.ch/blocklist/?download=ipblocklist'
 
 otx = OTXv2(API_KEY, server=OTX_SERVER)
 
+
 def valid_ip(ip, otx):
     try:
         # Confirm valid IP, exception if not
         socket.inet_aton(ip)
-        # Also use OTX's built in validation
-        response = otx.validate_indicator(IndicatorTypes.IPv4, ip, '')
-        if response['status'] !='success':
-            return False
-        # Check the IP isn't whitelisted by OTX, eg; 8.8.8.8
-        response = otx.get_indicator_details_full(IndicatorTypes.IPv4, ip)
-        if 'general' in response:
-            if 'validation' in response['general']:
-                if ['source'] in response['general']['validation']:
-                    if response['general']['validation']['source'] == 'whitelist':
-                        return False
+
         return True
     except Exception as e:
         print str(e)

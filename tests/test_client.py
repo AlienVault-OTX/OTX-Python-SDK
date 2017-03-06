@@ -231,6 +231,8 @@ class TestPulseDetails(TestOTXv2):
         pulse_id = pulse.get('id', '')
         indicators = self.otx.get_pulse_indicators(pulse_id=pulse_id)
         self.assertIsNotNone(indicators)
+        print "Indicators is " + str(indicators)
+        print "Indicators count is " + indicators.keys()
         self.assertTrue('count' in indicators.keys())
         self.assertTrue('results' in indicators.keys())
         results = indicators.get('results', [])
