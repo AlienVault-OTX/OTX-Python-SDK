@@ -330,6 +330,22 @@ class TestPulseCreate(TestOTXv2):
         self.assertTrue(len(response.get('indicators', [])) == len(validated_indicator_list))
         return
 
+
+
+    def test_create_pulse_and_update(self):
+        """
+        Test: create a pulse then replace the indicators
+        """
+        indicator_list = [ {'indicator': "one.com", 'type': 'domain'} ]
+        new_indicators = [ {'indicator': "two.com", 'type': 'domain'} ]
+        name = "Pyclient-indicators-unittests-modify-pulse"
+        response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
+        pulse_id = response['id']
+        response = self.otx.replace_pulse_indicators(pulse_id, new_indicators)
+        new_indicator = response['indicators']['indicators'][0]['indicator']
+        self.assertTrue(new_indicator == 'two.com')
+        return
+
     def test_create_pulse_tlp(self):
         """
         Test: pulse with each TLP.

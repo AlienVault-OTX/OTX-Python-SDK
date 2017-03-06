@@ -83,6 +83,42 @@ class OTXv2(object):
         json_data = json.loads(data)
         return json_data
 
+
+
+    def patch(self, url, body):
+        """
+        Internal API for POST request on a OTX URL
+        :param url: URL to retrieve
+        :param body: HTTP Body to send in request
+        :return: response as dict
+        """
+        request = Request(url)
+        request.add_header('X-OTX-API-KEY', self.key)
+        request.add_header('User-Agent', self.sdk)
+        request.add_header("Content-Type", "application/json")
+        method = "PATCH"
+        request.get_method = lambda: method
+        if body:
+            try:  # python2
+                request.add_data(json.dumps(body))
+            except AttributeError as ae:  # python3
+                request.data = json.dumps(body).encode('utf-8')
+        try:
+            response = urlopen(request)
+            data = response.read().decode('utf-8')
+            json_data = json.loads(data)
+            return json_data
+        except URLError as e:
+            if isinstance(e, HTTPError):
+                if e.code == 403:
+                    raise InvalidAPIKey("Invalid API Key")
+                elif e.code == 400:
+                    encoded_error = e.read()
+                    decoded_error = encoded_error.decode('utf-8')
+                    json.loads(decoded_error)
+                    raise BadRequest(decoded_error)
+        return {}
+
     def post(self, url, body):
         """
         Internal API for POST request on a OTX URL
@@ -357,7 +393,7 @@ class OTXv2(object):
 
     def get_pulse_details(self, pulse_id):
         """
-        For a given pulse_id, get the details of an arbitrary pulse.
+        For a given pulse_id, get the details of an arbitrary pulse.0
         :param pulse_id: object id for pulse
         :return: Pulse as dict
         """
@@ -365,16 +401,63 @@ class OTXv2(object):
         meta_data = self.get(pulse_url)
         return meta_data
 
-    def get_pulse_indicators(self, pulse_id):
+    def get_pulse_indicators(self, pulse_id, limit=20):
         """
         For a given pulse_id, get list of indicators (IOCs)
         :param pulse_id: Object ID specify which pulse to get indicators from
         :return: Indicator list
         """
-        pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators")
-        pulse_indicators_url = pulse_url
-        indicators = self.get(pulse_indicators_url)
+        indicators = []
+        next_page_url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit)
+        while next_page_url:
+            json_data = self.get(next_page_url)
+            for r in json_data["results"]:
+                indicators.append(r)
+            next_page_url = json_data["next"]
         return indicators
+
+
+    def replace_pulse_indicators(self, pulse_id, new_indicators):
+        """
+        Remove all indicators from the pulse, and add these indicators
+        :param pulse_id: The pulse you are replacing the indicators with
+        :param new_indicators: The complete set of indicators this pulse will now contain
+        :return: Return the new pulse
+
+        """
+        current_indicators = self.get_pulse_indicators(pulse_id)
+        current_indicator_values = []
+        current_indicator_indicators = []
+
+        for indicator in current_indicators:
+            current_indicator_values.append(indicator["indicator"])
+            current_indicator_indicators.append(indicator)
+
+        new_indicator_values = []
+        indicators_to_add = []
+
+        for indicator in new_indicators:
+                new_indicator_value = indicator["indicator"]
+                new_indicator_values.append(new_indicator_value)
+                if new_indicator_value not in current_indicator_values:
+                        indicators_to_add.append(indicator)
+
+        indicators_to_remove = []
+        for indicator in current_indicator_indicators:
+            if indicator["indicator"] not in new_indicator_values:
+                indicators_to_remove.append({"id" : indicator["id"]})
+
+        body = {
+            'indicators': {
+                'add': indicators_to_add,
+                'remove': indicators_to_remove
+            }
+        }
+
+        response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
+        return response
+
+
 
     def get_indicator_details_by_section(self, indicator_type, indicator, section='general'):
         """
