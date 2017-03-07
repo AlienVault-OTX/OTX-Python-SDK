@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+import datetime
 
 import IndicatorTypes
 
@@ -416,10 +417,9 @@ class OTXv2(object):
             next_page_url = json_data["next"]
         return indicators
 
-
     def replace_pulse_indicators(self, pulse_id, new_indicators):
         """
-        Remove all indicators from the pulse, and add these indicators
+        Replaces indicators in a pulse - new indicators are added, those that are no longer present are set to expire
         :param pulse_id: The pulse you are replacing the indicators with
         :param new_indicators: The complete set of indicators this pulse will now contain
         :return: Return the new pulse
@@ -437,20 +437,23 @@ class OTXv2(object):
         indicators_to_add = []
 
         for indicator in new_indicators:
-                new_indicator_value = indicator["indicator"]
-                new_indicator_values.append(new_indicator_value)
-                if new_indicator_value not in current_indicator_values:
-                        indicators_to_add.append(indicator)
+            new_indicator_value = indicator["indicator"]
+            new_indicator_values.append(new_indicator_value)
+            if new_indicator_value not in current_indicator_values:
+                indicators_to_add.append(indicator)
 
-        indicators_to_remove = []
+        indicators_to_amend = []
         for indicator in current_indicator_indicators:
             if indicator["indicator"] not in new_indicator_values:
-                indicators_to_remove.append({"id" : indicator["id"]})
-
+                yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+                indicators_to_amend.append({"id" : indicator["id"], "expiration": yesterday.strftime("%Y-%m-%d"), "title" : "Expired"})
+            else:
+                # Need this else statement, to cover indicators that appear, then go, then re-appear
+                indicators_to_amend.append({"id" : indicator["id"], "expiration": "", "title" : "", "is_active": 1})
         body = {
             'indicators': {
                 'add': indicators_to_add,
-                'remove': indicators_to_remove
+                'edit': indicators_to_amend
             }
         }
 
