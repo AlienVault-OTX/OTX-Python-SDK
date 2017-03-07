@@ -406,7 +406,7 @@ class TestValidateIndicator(TestOTXv2):
             self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
 
 if __name__ == '__main__':
-    username = "qatester-github-" + generate_rand_string(8, charset=string.hexdigits).lower()
+    username = "qatester-github"
     ALIEN_API_APIKEY = createUserGetApiKey(username, "password", username + "@aveng.us")
     unittest.main()
     deleteUser(username)
