@@ -32,7 +32,8 @@ def createUserGetApiKey(username, password, email):
     return apiKey
 
 def deleteUser(username):
-    r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  {"user": username } })
+    #r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  {"user": username } })
+    r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  [username ] })
     j = json.loads(r.text)
 
 # Class names should start with "Test"
@@ -406,7 +407,7 @@ class TestValidateIndicator(TestOTXv2):
             self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
 
 if __name__ == '__main__':
-    username = "qatester-github"
+    username = "qatester-github-temp"
     ALIEN_API_APIKEY = createUserGetApiKey(username, "password", username + "@aveng.us")
     unittest.main()
     deleteUser(username)
