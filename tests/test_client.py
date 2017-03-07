@@ -232,9 +232,7 @@ class TestPulseDetails(TestOTXv2):
         pulse_id = pulse.get('id', '')
         indicators = self.otx.get_pulse_indicators(pulse_id=pulse_id)
         self.assertIsNotNone(indicators)
-        print "Indicators is " + str(indicators)
-        print "Indicators count is " + indicators.keys()
-        self.assertTrue('count' in indicators.keys())
+        print("Indicators is " + str(indicators))
         self.assertTrue('results' in indicators.keys())
         results = indicators.get('results', [])
         for indicator in results:
@@ -347,8 +345,8 @@ class TestPulseCreate(TestOTXv2):
         response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
         pulse_id = response['id']
         response = self.otx.replace_pulse_indicators(pulse_id, new_indicators)
-        new_indicator = response['indicators']['indicators'][0]['indicator']
-        self.assertTrue(new_indicator == 'two.com')
+        new_indicators = str(response['indicators']['indicators'])
+        self.assertTrue('two.com' in new_indicators)
         return
 
     def test_create_pulse_tlp(self):
