@@ -16,17 +16,17 @@ ALIEN_DEV_SERVER = os.getenv('X_OTX_DEV_SERVER', "")
 ALIEN_API_APIKEY = ""
 
 
-"""
-Create a user, and get the API key
-"""
 def createUserGetApiKey(username, password, email):
+    """
+    Create a user, and get the API key
+    """
     r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/setup/', json={"users": [{ "username": username, "password": password, "email": email}]})
     r = requests.post(ALIEN_DEV_SERVER + 'auth/login', json={"username": username, "password" : password})
     j = json.loads(r.text)
     uiKey = j['key']
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': uiKey})
-    print uiKey
-    print username
+    print(uiKey)
+    print(username)
     j = json.loads(r.text)
     apiKey = j['api_keys'][0]['api_key']
     print(u"created api key: {0}".format(apiKey))
@@ -391,7 +391,7 @@ class TestValidateIndicator(TestOTXv2):
         indicator_type = IndicatorTypes.DOMAIN
         print("test_validate_valid_domain submitting (valid-ish) indicator: " + indicator)
         response = self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
-        print ("test_validate_valid_domain response: {}".format(response))
+        print("test_validate_valid_domain response: {}".format(response))
         self.assertIsNotNone(response)
         self.assertTrue('success' in response.get('status', ''))
 
