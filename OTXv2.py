@@ -69,7 +69,6 @@ class OTXv2(object):
             ('X-OTX-API-KEY', self.key),
             ('User-Agent', self.sdk)
         ]
-        print "using key", self.key
         response = None
         try:
             response = request.open(url)
