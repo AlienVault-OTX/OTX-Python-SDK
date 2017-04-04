@@ -44,13 +44,9 @@ class TestOTXv2(unittest.TestCase):
     """
     Base class configure API Key to use on a per test basis.
     """
-    def setUp(self, **kwargs):
-        provided_key = kwargs.get('api_key', '')
-        if provided_key:
-            self.api_key = provided_key
-        else:
-            self.api_key = ALIEN_API_APIKEY
-
+    def setUp(self, api_key=''):
+        print("Passed in api_key={}".format(api_key))
+        self.api_key = api_key or ALIEN_API_APIKEY
         self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
 
 
@@ -59,7 +55,7 @@ class TestSubscriptionsInvalidKey(TestOTXv2):
     Confirm InvalidAPIKey class is raised for API Key failures
     """
     def setUp(self, **kwargs):
-        super(TestSubscriptionsInvalidKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
+        super(TestSubscriptionsInvalidKey, self).setUp(api_key=generate_rand_string(length=64))
 
     def test_getall(self):
         with self.assertRaises(InvalidAPIKey):
@@ -70,8 +66,6 @@ class TestSubscriptions(TestOTXv2):
     """
     Confirm that given a valid API Key, we can obtain threat intelligence subscriptions.
     """
-    def setUp(self, **kwargs):
-        super(TestSubscriptions, self).setUp(**{'api_key': ALIEN_API_APIKEY})
 
     def test_getall(self):
         pulses = self.otx.getall()
@@ -126,9 +120,6 @@ class TestSubscriptions(TestOTXv2):
 
 
 class TestSearch(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestSearch, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_search_pulses_simple(self):
         res = self.otx.search_pulses("Russian")
         pulses = res.get('results')
@@ -165,9 +156,6 @@ class TestSearch(TestOTXv2):
 
 
 class TestEvents(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestEvents, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_getevents_since(self):
         three_months_dt = (datetime.datetime.now() - datetime.timedelta(days=90))
         three_months_timestamp = three_months_dt.isoformat()
@@ -181,9 +169,6 @@ class TestEvents(TestOTXv2):
 
 
 class TestIndicatorTypes(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestIndicatorTypes, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_get_all_indicators(self):
         indicator_gen = self.otx.get_all_indicators()
         for indicator in indicator_gen:
@@ -204,9 +189,6 @@ class TestIndicatorTypes(TestOTXv2):
 
 
 class TestPulseDetails(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestPulseDetails, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_get_pulse_details(self):
         # get a pulse from search to use as testcase
         res = self.otx.search_pulses("Russian")
@@ -241,9 +223,6 @@ class TestPulseDetails(TestOTXv2):
 
 
 class TestIndicatorDetails(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestIndicatorDetails, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_get_indicator_details_IPv4_by_section(self):
         print("test_get_indicator_details_IPv4_by_section")
         for section in IndicatorTypes.IPv4.sections:
@@ -261,9 +240,6 @@ class TestIndicatorDetails(TestOTXv2):
 
 
 class TestPulseCreate(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestPulseCreate, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_create_pulse_simple(self):
         name = "Pyclient-simple-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         print("test_create_pulse_simple submitting pulse: " + name)
@@ -331,8 +307,6 @@ class TestPulseCreate(TestOTXv2):
         self.assertTrue(len(response.get('indicators', [])) == len(validated_indicator_list))
         return
 
-
-
     def test_create_pulse_and_update(self):
         """
         Test: create a pulse then replace the indicators
@@ -383,9 +357,6 @@ class TestPulseCreateInvalidKey(TestOTXv2):
 
 
 class TestValidateIndicator(TestOTXv2):
-    def setUp(self, **kwargs):
-        super(TestValidateIndicator, self).setUp(**{'api_key': ALIEN_API_APIKEY})
-
     def test_validate_valid_domain(self):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
         indicator_type = IndicatorTypes.DOMAIN

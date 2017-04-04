@@ -85,8 +85,6 @@ class OTXv2(object):
         json_data = json.loads(data)
         return json_data
 
-
-
     def patch(self, url, body):
         """
         Internal API for POST request on a OTX URL
