@@ -460,8 +460,6 @@ class OTXv2(object):
         response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
         return response
 
-
-
     def get_indicator_details_by_section(self, indicator_type, indicator, section='general'):
         """
         The Indicator details endpoints are split into sections.  Obtain a specific section for an indicator.

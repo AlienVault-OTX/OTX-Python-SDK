@@ -15,6 +15,7 @@ STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 ALIEN_DEV_SERVER = os.getenv('X_OTX_DEV_SERVER', "")
 ALIEN_API_APIKEY = ""
 
+
 """
 Create a user, and get the API key
 """
@@ -31,10 +32,12 @@ def createUserGetApiKey(username, password, email):
     print(u"created api key: {0}".format(apiKey))
     return apiKey
 
+
 def deleteUser(username):
     #r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  {"user": username } })
     r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  [username ] })
     j = json.loads(r.text)
+
 
 # Class names should start with "Test"
 class TestOTXv2(unittest.TestCase):
@@ -49,9 +52,6 @@ class TestOTXv2(unittest.TestCase):
             self.api_key = ALIEN_API_APIKEY
 
         self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
-
-
-
 
 
 class TestSubscriptionsInvalidKey(TestOTXv2):
@@ -403,6 +403,7 @@ class TestValidateIndicator(TestOTXv2):
         print("test_validate_invalid_domain submitting indicator: " + indicator)
         with self.assertRaises(BadRequest):
             self.otx.validate_indicator(indicator_type=indicator_type, indicator=indicator)
+
 
 if __name__ == '__main__':
     username = "qatester-github-temp"
