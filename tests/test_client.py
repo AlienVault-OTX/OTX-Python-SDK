@@ -233,13 +233,11 @@ class TestPulseDetails(TestOTXv2):
         indicators = self.otx.get_pulse_indicators(pulse_id=pulse_id)
         self.assertIsNotNone(indicators)
         print("Indicators is " + str(indicators))
-        self.assertTrue('results' in indicators.keys())
-        results = indicators.get('results', [])
-        for indicator in results:
+        for indicator in indicators:
             print("next indicator:")
             pprint.pprint(indicator)
-            self.assertTrue(indicator.get('indicator', '') != '')
-            self.assertTrue(indicator.get('type', '') != '')
+            self.assertIsNotNone(indicator.get('indicator'))
+            self.assertIsNotNone(indicator.get('type'))
 
 
 class TestIndicatorDetails(TestOTXv2):
