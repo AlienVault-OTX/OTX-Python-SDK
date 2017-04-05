@@ -7,7 +7,7 @@ from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
 
 try:
-    from urllib2 import urlencode
+    from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
 
