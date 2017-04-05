@@ -2,6 +2,7 @@
 
 import json
 import datetime
+import requests
 
 import IndicatorTypes
 
@@ -18,26 +19,17 @@ INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                    # in
 VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)    # indicator details
 
 
-try:
-    # For Python2
-    from urllib2 import URLError, HTTPError, build_opener, ProxyHandler, urlopen, Request
-except ImportError:
-    # For Python3
-    from urllib.error import URLError, HTTPError
-    from urllib.request import build_opener, ProxyHandler, urlopen, Request
-
-
 class InvalidAPIKey(Exception):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, value=None):
+        self.value = value or "Invalid API Key"
 
     def __str__(self):
         return repr(self.value)
 
 
 class BadRequest(Exception):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, value=None):
+        self.value = value or "Bad Request"
 
     def __str__(self):
         return repr(self.value)
@@ -48,11 +40,33 @@ class OTXv2(object):
     Main class to interact with the AlienVault OTX API.
     """
 
-    def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com", project="SDK"):
+    def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com", project="SDK", user_agent=None):
         self.key = api_key
         self.server = server
-        self.proxy = proxy
-        self.sdk = 'OTX Python {}/1.1'.format(project)
+        self.proxies = {'http': proxy} if proxy else {}
+        self.request_session = None
+        self.headers = {
+            'X-OTX-API-KEY': self.key,
+            'User-Agent': user_agent or 'OTX Python {}/1.1'.format(project),
+            'Content-Type': 'application/json'
+        }
+
+    def session(self):
+        if self.request_session is None:
+            self.request_session = requests.Session()
+
+        return self.request_session
+
+    @classmethod
+    def handle_response_errors(cls, response):
+        if response.status_code == 403:
+            raise InvalidAPIKey()
+        elif response.status_code == 400:
+            raise BadRequest(response.json())
+        elif str(response.status_code)[0] != "2":
+            raise Exception("Unexpected http code: %r", response.code)
+
+        return response
 
     def get(self, url):
         """
@@ -60,29 +74,9 @@ class OTXv2(object):
         :param url: URL to retrieve
         :return: response in JSON object form
         """
-        if self.proxy:
-            proxy = ProxyHandler({'http': self.proxy})
-            request = build_opener(proxy)
-        else:
-            request = build_opener()
-        request.addheaders = [
-            ('X-OTX-API-KEY', self.key),
-            ('User-Agent', self.sdk)
-        ]
-        response = None
-        try:
-            response = request.open(url)
-        except URLError as e:
-            if isinstance(e, HTTPError):
-                if e.code == 403:
-                    raise InvalidAPIKey("Invalid API Key")
-                elif e.code == 400:
-                    raise BadRequest("Bad Request")
-            else:
-                raise e
-        data = response.read().decode('utf-8')
-        json_data = json.loads(data)
-        return json_data
+
+        response = self.session().get(url, headers=self.headers, proxies=self.proxies)
+        return self.handle_response_errors(response).json()
 
     def patch(self, url, body):
         """
@@ -91,32 +85,9 @@ class OTXv2(object):
         :param body: HTTP Body to send in request
         :return: response as dict
         """
-        request = Request(url)
-        request.add_header('X-OTX-API-KEY', self.key)
-        request.add_header('User-Agent', self.sdk)
-        request.add_header("Content-Type", "application/json")
-        method = "PATCH"
-        request.get_method = lambda: method
-        if body:
-            try:  # python2
-                request.add_data(json.dumps(body))
-            except AttributeError as ae:  # python3
-                request.data = json.dumps(body).encode('utf-8')
-        try:
-            response = urlopen(request)
-            data = response.read().decode('utf-8')
-            json_data = json.loads(data)
-            return json_data
-        except URLError as e:
-            if isinstance(e, HTTPError):
-                if e.code == 403:
-                    raise InvalidAPIKey("Invalid API Key")
-                elif e.code == 400:
-                    encoded_error = e.read()
-                    decoded_error = encoded_error.decode('utf-8')
-                    json.loads(decoded_error)
-                    raise BadRequest(decoded_error)
-        return {}
+
+        response = self.session().patch(url, data=json.dumps(body), headers=self.headers, proxies=self.proxies)
+        return self.handle_response_errors(response).json()
 
     def post(self, url, body):
         """
@@ -125,32 +96,9 @@ class OTXv2(object):
         :param body: HTTP Body to send in request
         :return: response as dict
         """
-        request = Request(url)
-        request.add_header('X-OTX-API-KEY', self.key)
-        request.add_header('User-Agent', self.sdk)
-        request.add_header("Content-Type", "application/json")
-        method = "POST"
-        request.get_method = lambda: method
-        if body:
-            try:  # python2
-                request.add_data(json.dumps(body))
-            except AttributeError as ae:  # python3
-                request.data = json.dumps(body).encode('utf-8')
-        try:
-            response = urlopen(request)
-            data = response.read().decode('utf-8')
-            json_data = json.loads(data)
-            return json_data
-        except URLError as e:
-            if isinstance(e, HTTPError):
-                if e.code == 403:
-                    raise InvalidAPIKey("Invalid API Key")
-                elif e.code == 400:
-                    encoded_error = e.read()
-                    decoded_error = encoded_error.decode('utf-8')
-                    json.loads(decoded_error)
-                    raise BadRequest(decoded_error)
-        return {}
+
+        response = self.session().post(url, data=json.dumps(body), headers=self.headers, proxies=self.proxies)
+        return self.handle_response_errors(response).json()
 
     def create_pulse(self, **kwargs):
         """
@@ -254,9 +202,11 @@ class OTXv2(object):
         :return: formatted URL string
         """
         indicator_url = self.create_url(INDICATOR_DETAILS)
-        indicator_url = indicator_url + "{indicator_type}/{indicator}/{section}".format(indicator_type=indicator_type.slug,
-                                                                                        indicator=indicator,
-                                                                                        section=section)
+        indicator_url += "{indicator_type}/{indicator}/{section}".format(
+            indicator_type=indicator_type.slug,
+            indicator=indicator,
+            section=section
+        )
         return indicator_url
 
     def getall(self, limit=20):
