@@ -50,6 +50,22 @@ class TestOTXv2(unittest.TestCase):
         self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
 
 
+class TestValidateAPIKey(TestOTXv2):
+    """
+    Confirm expected boolean results for calling the validate_api_key() method.
+    """
+
+    def test_validate_valid_key(self):
+        super(TestValidateAPIKey, self).setUp()
+        res = self.otx.validate_api_key()
+        self.assertTrue(res)
+
+    def test_validate_invalid_key(self):
+        super(TestValidateAPIKey, self).setUp(**{'api_key': generate_rand_string(length=64)})
+        res = self.otx.validate_api_key()
+        self.assertFalse(res)
+
+
 class TestSubscriptionsInvalidKey(TestOTXv2):
     """
     Confirm InvalidAPIKey class is raised for API Key failures

@@ -8,6 +8,7 @@ import IndicatorTypes
 
 # API URLs
 API_V1_ROOT = "{}/api/v1"                                                   # API v1 base path
+USERS_ME = "{0}/users/me".format(API_V1_ROOT)                               # API user details
 SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
 EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
 SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
@@ -99,6 +100,20 @@ class OTXv2(object):
 
         response = self.session().post(url, data=json.dumps(body), headers=self.headers, proxies=self.proxies)
         return self.handle_response_errors(response).json()
+
+    def validate_api_key(self):
+        """
+        Validate the OTX API key.
+
+        :return: True if key is valid, False otherwise
+        :rtype: bool
+        """
+        user_url = self.create_url(USERS_ME)
+        try:
+            self.get(user_url)
+            return True
+        except:
+            return False
 
     def create_pulse(self, **kwargs):
         """
