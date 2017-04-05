@@ -3,11 +3,14 @@
 import json
 import datetime
 import requests
+from requests.packages.urllib3.util import Retry
+from requests.adapters import HTTPAdapter
+import urllib
 
 import IndicatorTypes
 
 # API URLs
-API_V1_ROOT = "{}/api/v1"                                                   # API v1 base path
+API_V1_ROOT = "api/v1"                                                   # API v1 base path
 SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
 EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
 SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
@@ -35,6 +38,14 @@ class BadRequest(Exception):
         return repr(self.value)
 
 
+class RetryError(Exception):
+    def __init__(self, value=None):
+        self.value = value or "Exceeded maximum number of retries"
+
+    def __str__(self):
+        return repr(self.value)
+
+
 class OTXv2(object):
     """
     Main class to interact with the AlienVault OTX API.
@@ -55,30 +66,52 @@ class OTXv2(object):
         if self.request_session is None:
             self.request_session = requests.Session()
 
+            # This will allow 5 tries at a url, with an increasing backoff.  Only applies to a specific set of codes
+            self.request_session.mount('https://', HTTPAdapter(
+                max_retries=Retry(
+                    total=5,
+                    status_forcelist=[429, 500, 502, 503],
+                    backoff_factor=1,
+                )
+            ))
+
         return self.request_session
 
     @classmethod
     def handle_response_errors(cls, response):
+        def _response_json():
+            try:
+                return response.json()
+            except Exception, e:
+                return {'internal_error': 'Unable to decode response json: {}'.format(e)}
+
         if response.status_code == 403:
             raise InvalidAPIKey()
         elif response.status_code == 400:
-            raise BadRequest(response.json())
+            raise BadRequest(_response_json())
         elif str(response.status_code)[0] != "2":
-            raise Exception("Unexpected http code: %r", response.code)
+            raise Exception("Unexpected http code: %r, response=%r", response.status_code, _response_json())
 
         return response
 
-    def get(self, url):
+    def get(self, url, **kwargs):
         """
         Internal API for GET request on a OTX URL
         :param url: URL to retrieve
         :return: response in JSON object form
         """
 
-        response = self.session().get(url, headers=self.headers, proxies=self.proxies)
-        return self.handle_response_errors(response).json()
+        try:
+            response = self.session().get(
+                    self.create_url(url, **kwargs),
+                    headers=self.headers,
+                    proxies=self.proxies,
+            )
+            return self.handle_response_errors(response).json()
+        except requests.exceptions.RetryError:
+            raise RetryError()
 
-    def patch(self, url, body):
+    def patch(self, url, body, **kwargs):
         """
         Internal API for POST request on a OTX URL
         :param url: URL to retrieve
@@ -86,10 +119,15 @@ class OTXv2(object):
         :return: response as dict
         """
 
-        response = self.session().patch(url, data=json.dumps(body), headers=self.headers, proxies=self.proxies)
+        response = self.session().patch(
+                self.create_url(url, **kwargs),
+                data=json.dumps(body),
+                headers=self.headers,
+                proxies=self.proxies,
+        )
         return self.handle_response_errors(response).json()
 
-    def post(self, url, body):
+    def post(self, url, body, **kwargs):
         """
         Internal API for POST request on a OTX URL
         :param url: URL to retrieve
@@ -97,7 +135,12 @@ class OTXv2(object):
         :return: response as dict
         """
 
-        response = self.session().post(url, data=json.dumps(body), headers=self.headers, proxies=self.proxies)
+        response = self.session().post(
+                self.create_url(url, **kwargs),
+                data=json.dumps(body),
+                headers=self.headers,
+                proxies=self.proxies,
+        )
         return self.handle_response_errors(response).json()
 
     def create_pulse(self, **kwargs):
@@ -182,13 +225,11 @@ class OTXv2(object):
         :return: a formatted url (i.e. "/search/pulses")
         """
         uri = url_path.format(self.server)
-        if kwargs.items():
-            uri += "?"
-            for parameter, value in kwargs.items():
-                uri += parameter
-                uri += "="
-                uri += str(value)
-                uri += "&"
+        uri = uri if uri.startswith("http") else self.server + uri
+        if kwargs:
+            uri += "?" + urllib.urlencode(kwargs)
+
+        # print uri
         return uri
 
     def create_indicator_detail_url(self, indicator_type, indicator, section='general'):
@@ -209,63 +250,70 @@ class OTXv2(object):
         )
         return indicator_url
 
-    def getall(self, limit=20):
+    def walkapi_iter(self, url, max_page=None):
+        next_page_url = url
+        count = 0
+        while next_page_url:
+            count += 1
+            if max_page and count > max_page:
+                break
+
+            data = self.get(next_page_url)
+            for el in data['results']:
+                yield el
+            next_page_url = data["next"]
+
+    def walkapi(self, url, iter=False, max_page=None):
+        if iter:
+            return self.walkapi_iter(url, max_page=max_page)
+        else:
+            return list(self.walkapi_iter(url, max_page=max_page))
+
+    def getall(self, modified_since=None, author_name=None, limit=20, max_page=None, iter=False):
         """
         Get all pulses user is subscribed to.
+        :param modified_since: datetime object representing earliest date you want returned in results
+        :param author_name: Name of pulse author to limit results to
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
-        pulses = []
-        next_page_url = self.create_url(SUBSCRIBED, limit=limit)
-        while next_page_url:
-            json_data = self.get(next_page_url)
-            for r in json_data["results"]:
-                pulses.append(r)
-            next_page_url = json_data["next"]
-        return pulses
+        args = {'limit': limit}
+        if modified_since is not None:
+            args['modified_since'] = modified_since
+        if author_name is not None:
+            args['author_name'] = author_name
 
-    def getall_iter(self, limit=20):
+        return self.walkapi(self.create_url(SUBSCRIBED, **args), iter=iter, max_page=max_page)
+
+    def getall_iter(self, author_name=None, modified_since=None, limit=20, max_page=None):
         """
         Get all pulses user is subscribed to, yield results.
+        :param modified_since: datetime object representing earliest date you want returned in results
+        :param author_name: Name of pulse author to limit results to
         :param limit: The page size to retrieve in a single request
+        :param max_page: if set, limits number of pages returned to 'max_page'
         :return: the consolidated set of pulses for the user
         """
-        next_page_url = self.create_url(SUBSCRIBED, limit=limit)
-        while next_page_url:
-            json_data = self.get(next_page_url)
-            for r in json_data["results"]:
-                yield r
-            next_page_url = json_data["next"]
+        return self.getall(modified_since=modified_since, author_name=author_name, limit=limit, max_page=max_page, iter=True)
 
-    def getsince(self, timestamp, limit=20):
+    def getsince(self, timestamp, limit=20, max_page=None):
         """
         Get all pulses modified since a particular time.
         :param timestamp: iso formatted date time string
         :param limit: Maximum number of results to return in a single request
         :return: the consolidated set of pulses for the user
         """
-        pulses = []
-        next_page_url = self.create_url(SUBSCRIBED, limit=limit, modified_since=timestamp)
-        while next_page_url:
-            json_data = self.get(next_page_url)
-            for r in json_data["results"]:
-                pulses.append(r)
-            next_page_url = json_data["next"]
-        return pulses
 
-    def getsince_iter(self, timestamp, limit=20):
+        return self.getall(limit=limit, modified_since=timestamp, max_page=max_page, iter=False)
+
+    def getsince_iter(self, timestamp, limit=20, max_page=None):
         """
         Get all pulses modified since a particular time, yield results.
         :param timestamp: iso formatted date time string
         :param limit: Maximum number of results to return in a single request
         :return: the consolidated set of pulses for the user
         """
-        next_page_url = self.create_url(SUBSCRIBED, limit=limit, modified_since=timestamp)
-        while next_page_url:
-            json_data = self.get(next_page_url)
-            for r in json_data["results"]:
-                yield r
-            next_page_url = json_data["next"]
+        return self.getall(limit=limit, modified_since=timestamp, max_page=max_page, iter=True)
 
     def search_pulses(self, query, max_results=25):
         """
@@ -311,7 +359,7 @@ class OTXv2(object):
         resource.update(additional_fields)
         return resource
 
-    def get_all_indicators(self, indicator_types=IndicatorTypes.all_types):
+    def get_all_indicators(self, indicator_types=IndicatorTypes.all_types, max_page=None):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
@@ -319,7 +367,7 @@ class OTXv2(object):
         :return: yields the indicator object for use
         """
         name_list = IndicatorTypes.to_name_list(indicator_types)
-        for pulse in self.getall_iter():
+        for pulse in self.getall_iter(max_page=max_page):
             for indicator in pulse["indicators"]:
                 if indicator["type"] in name_list:
                     yield indicator
@@ -331,14 +379,7 @@ class OTXv2(object):
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
-        events = []
-        next_page_url = self.create_url(EVENTS, limit=limit, since=timestamp)
-        while next_page_url:
-            json_data = self.get(next_page_url)
-            for r in json_data["results"]:
-                events.append(r)
-            next_page_url = json_data["next"]
-        return events
+        return self.walkapi(self.create_url(EVENTS, limit=limit, since=timestamp))
 
     def get_pulse_details(self, pulse_id):
         """
@@ -356,14 +397,7 @@ class OTXv2(object):
         :param pulse_id: Object ID specify which pulse to get indicators from
         :return: Indicator list
         """
-        indicators = []
-        next_page_url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit)
-        while next_page_url:
-            json_data = self.get(next_page_url)
-            for r in json_data["results"]:
-                indicators.append(r)
-            next_page_url = json_data["next"]
-        return indicators
+        return self.walkapi(self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit))
 
     def replace_pulse_indicators(self, pulse_id, new_indicators):
         """
