@@ -5,7 +5,11 @@ import datetime
 import requests
 from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
-import urllib
+
+try:
+    from urllib2 import urlencode
+except ImportError:
+    from urllib import urlencode
 
 import IndicatorTypes
 
@@ -227,7 +231,7 @@ class OTXv2(object):
         uri = url_path.format(self.server)
         uri = uri if uri.startswith("http") else self.server + uri
         if kwargs:
-            uri += "?" + urllib.urlencode(kwargs)
+            uri += "?" + urlencode(kwargs)
 
         # print uri
         return uri
