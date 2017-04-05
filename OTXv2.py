@@ -82,7 +82,7 @@ class OTXv2(object):
         def _response_json():
             try:
                 return response.json()
-            except Exception, e:
+            except Exception as e:
                 return {'internal_error': 'Unable to decode response json: {}'.format(e)}
 
         if response.status_code == 403:
