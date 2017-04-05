@@ -53,7 +53,6 @@ class TestSubscriptionsInvalidKey(TestOTXv2):
     def test_getall(self):
         with self.assertRaises(InvalidAPIKey):
             r = self.otx.getall(max_page=3, limit=5)
-            self.assertTrue(len(r) <= 3*5)
 
 
 class TestSubscriptions(TestOTXv2):
@@ -62,9 +61,10 @@ class TestSubscriptions(TestOTXv2):
     """
 
     def test_getall(self):
-        pulses = self.otx.getall(max_page=3)
+        pulses = self.otx.getall(max_page=3, limit=5)
         self.assertIsNotNone(pulses)
         self.assertTrue(len(pulses) > 0)
+        self.assertTrue(len(pulses) <= 3 * 5)
         most_recent = pulses[0]
         self.assertIsNotNone(most_recent.get('id', None))
         self.assertIsNotNone(most_recent.get('name', None))
@@ -106,6 +106,20 @@ class TestSubscriptions(TestOTXv2):
             self.assertTrue(pulse.get('name', None))
             pulse_modified = pulse.get('modified', None)
             self.assertIsNotNone(pulse_modified)
+            try:
+                pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
+            except ValueError:
+                pulse_modified_dt = datetime.datetime.strptime(pulse_modified, '%Y-%m-%dT%H:%M:%S')
+            self.assertGreaterEqual(pulse_modified_dt, three_months_dt)
+
+    def test_author_param(self):
+        for pulse in self.otx.getall(author_name='AlienVault', max_page=3):
+            self.assertEqual(pulse['author_name'], 'AlienVault')
+
+        three_months_dt = (datetime.datetime.now() - datetime.timedelta(days=90))
+        for pulse in self.otx.getall(author_name='AlienVault', modified_since=three_months_dt, max_page=3):
+            self.assertEqual(pulse['author_name'], 'AlienVault')
+            pulse_modified = pulse.get('modified', None)
             try:
                 pulse_modified_dt = datetime.datetime.strptime(pulse_modified, STRP_TIME_FORMAT)
             except ValueError:
