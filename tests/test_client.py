@@ -385,5 +385,5 @@ class TestRequests(TestOTXv2):
 if __name__ == '__main__':
     username = "qatester-github-temp"
     ALIEN_API_APIKEY = create_user(username, "password", username + "@aveng.us")
-    unittest.main(failfast=True)
+    unittest.main()
     delete_user(username)
