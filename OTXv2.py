@@ -14,7 +14,7 @@ except ImportError:
 import IndicatorTypes
 
 # API URLs
-API_V1_ROOT = "api/v1"                                                   # API v1 base path
+API_V1_ROOT = "/api/v1"                                                   # API v1 base path
 SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
 EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
 SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
