@@ -14,7 +14,7 @@ except ImportError:
 import IndicatorTypes
 
 # API URLs
-API_V1_ROOT = "api/v1"                                                   # API v1 base path
+API_V1_ROOT = "/api/v1"                                                   # API v1 base path
 SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
 EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
 SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
@@ -107,9 +107,9 @@ class OTXv2(object):
 
         try:
             response = self.session().get(
-                    self.create_url(url, **kwargs),
-                    headers=self.headers,
-                    proxies=self.proxies,
+                self.create_url(url, **kwargs),
+                headers=self.headers,
+                proxies=self.proxies,
             )
             return self.handle_response_errors(response).json()
         except requests.exceptions.RetryError:
@@ -124,10 +124,10 @@ class OTXv2(object):
         """
 
         response = self.session().patch(
-                self.create_url(url, **kwargs),
-                data=json.dumps(body),
-                headers=self.headers,
-                proxies=self.proxies,
+            self.create_url(url, **kwargs),
+            data=json.dumps(body),
+            headers=self.headers,
+            proxies=self.proxies,
         )
         return self.handle_response_errors(response).json()
 
@@ -140,10 +140,10 @@ class OTXv2(object):
         """
 
         response = self.session().post(
-                self.create_url(url, **kwargs),
-                data=json.dumps(body),
-                headers=self.headers,
-                proxies=self.proxies,
+            self.create_url(url, **kwargs),
+            data=json.dumps(body),
+            headers=self.headers,
+            proxies=self.proxies,
         )
         return self.handle_response_errors(response).json()
 
@@ -432,10 +432,10 @@ class OTXv2(object):
         for indicator in current_indicator_indicators:
             if indicator["indicator"] not in new_indicator_values:
                 yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-                indicators_to_amend.append({"id" : indicator["id"], "expiration": yesterday.strftime("%Y-%m-%d"), "title" : "Expired"})
+                indicators_to_amend.append({"id": indicator["id"], "expiration": yesterday.strftime("%Y-%m-%d"), "title": "Expired"})
             else:
                 # Need this else statement, to cover indicators that appear, then go, then re-appear
-                indicators_to_amend.append({"id" : indicator["id"], "expiration": "", "title" : "", "is_active": 1})
+                indicators_to_amend.append({"id": indicator["id"], "expiration": "", "title": "", "is_active": 1})
         body = {
             'indicators': {
                 'add': indicators_to_add,
