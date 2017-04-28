@@ -403,6 +403,19 @@ class OTXv2(object):
         """
         return self.walkapi(self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit))
 
+
+    def edit_pulse_indicators(self, pulse_id, body):
+        """
+        Edits indicators in a pulse
+        :param pulse_id: The pulse you are editing the indicators in
+        :param body: The complete set of indicators this pulse will now contain
+        eg; body = { 'indicators': { 'add': indicators_to_add, 'edit': indicators_to_amend } }
+        :return: Return the new pulse
+        """
+        response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
+        return response
+
+
     def replace_pulse_indicators(self, pulse_id, new_indicators):
         """
         Replaces indicators in a pulse - new indicators are added, those that are no longer present are set to expire
