@@ -409,7 +409,10 @@ class OTXv2(object):
         Edits indicators in a pulse
         :param pulse_id: The pulse you are editing the indicators in
         :param body: The complete set of indicators this pulse will now contain
-        eg; body = { 'indicators': { 'add': indicators_to_add, 'edit': indicators_to_amend } }
+        eg; body: {
+            "description": "New Description",
+            "tags": {"add": ["addtag1", "addtag2"], "remove": ["remtag1"]}
+        }
         :return: Return the new pulse
         """
         response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
