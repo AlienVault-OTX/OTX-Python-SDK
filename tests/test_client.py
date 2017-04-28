@@ -315,9 +315,9 @@ class TestPulseCreate(TestOTXv2):
         return
 
     def test_create_pulse_and_update(self):
-            """
-            Test: create a pulse then replace the indicators
-            """
+        """
+        Test: create a pulse then replace the indicators
+        """
         indicator_list = [ {'indicator': "one.com", 'type': 'domain'} ]
         new_indicators = [ {'indicator': "two.com", 'type': 'domain'} ]
         name = "Pyclient-indicators-unittests-modify-pulse"
