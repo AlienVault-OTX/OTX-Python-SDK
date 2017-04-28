@@ -135,10 +135,10 @@ class TestSearch(TestOTXv2):
         self.assertIsNotNone(pulses)
         self.assertTrue(len(pulses) > 0)
         pulse = pulses[0]
-        print(u"test_search_pulses_simple top hit: {0}".format(pulse.get('name', '')))
-        print str(pulses[0])
+        #print(u"test_search_pulses_simple top hit: {0}".format(pulse.get('name', '')))
+        #print str(pulses[0])
         self.assertIsNotNone(pulse.get('modified', None))
-        self.assertIsNotNone(pulse.get('author', None))
+        self.assertIsNotNone(pulse.get('author_name', None))
         self.assertIsNotNone(pulse.get('id', None))
         self.assertIsNotNone(pulse.get('tags', None))
         self.assertIsNotNone(pulse.get('references', None))
