@@ -404,9 +404,9 @@ class OTXv2(object):
         return self.walkapi(self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit))
 
 
-    def edit_pulse_indicators(self, pulse_id, body):
+    def edit_pulse(self, pulse_id, body):
         """
-        Edits indicators in a pulse
+        Edits a pulse
         :param pulse_id: The pulse you are editing the indicators in
         :param body: The complete set of indicators this pulse will now contain
         eg; body: {

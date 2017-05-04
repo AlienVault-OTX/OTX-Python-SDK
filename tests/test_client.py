@@ -10,6 +10,8 @@ import unittest
 from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey, BadRequest, RetryError
 import IndicatorTypes
+from PatchPulse import PatchPulse
+
 
 
 STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
@@ -331,7 +333,7 @@ class TestPulseCreate(TestOTXv2):
 
     def test_create_pulse_and_edit(self):
         """
-        Test: create a pulse then add indicators
+        Test: create a pulse then add indicators via json directly
         """
         indicator_list = [ {'indicator': "one.com", 'type': 'domain'} ]
         indicators_to_add = [ {'indicator': "added.com", 'type': 'domain'} ]
@@ -339,10 +341,31 @@ class TestPulseCreate(TestOTXv2):
         name = "Pyclient-indicators-unittests-modify-pulse"
         response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
         pulse_id = response['id']
-        response = self.otx.edit_pulse_indicators(pulse_id, add_indicators)
+        response = self.otx.edit_pulse(pulse_id, add_indicators)
         new_indicators = str(response['indicators']['indicators'])
         self.assertTrue('added.com' in new_indicators)
         return
+
+
+def test_create_pulse_and_edit_via_patch_pulse(self):
+    """
+    Test: create a pulse then add indicators via a patch pulse object
+    """
+    indicator_list = [ {'indicator': "one.com", 'type': 'domain'} ]
+    name = "Pyclient-indicators-unittests-modify-pulse-patch-pulse"
+    response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
+    pulse_id = response['id']
+
+    # Edit the pulse using a patch pulse object
+    # We could also edit indicators etc. here
+    pp = PatchPulse(pulse_id)
+    pp.add("tags", ["addtag1", "addtag2"])
+    pp.set("description","New Description")
+
+    response = self.otx.edit_pulse(pulse_id, pp.getBody())
+    new_tags = str(response['tags'])
+    self.assertTrue('addtag1' in new_tags)
+    return
 
     def test_create_pulse_tlp(self):
         """
