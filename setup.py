@@ -10,6 +10,6 @@ setup(
     author_email='otx@alienvault.com',
     url='https://github.com/AlienVault-Labs/OTX-Python-SDK',
     download_url='https://github.com/AlienVault-Labs/OTX-Python-SDK/tarball/1.1.0',
-    py_modules=['OTXv2', 'indicator_types','patch_pulse'],
+    py_modules=['OTXv2', 'IndicatorYypes','PatchPulse'],
     install_requires=['simplejson', 'requests']
 )
