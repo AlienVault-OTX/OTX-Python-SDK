@@ -10,7 +10,7 @@ import unittest
 from utils import generate_rand_string
 from OTXv2 import OTXv2, InvalidAPIKey, BadRequest, RetryError
 import IndicatorTypes
-from PatchPulse import PatchPulse
+from patch_pulse import PatchPulse
 
 
 
