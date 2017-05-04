@@ -367,24 +367,24 @@ def test_create_pulse_and_edit_via_patch_pulse(self):
     self.assertTrue('addtag1' in new_tags)
     return
 
-    def test_create_pulse_tlp(self):
-        """
-        Test: pulse with each TLP.
-        """
-        charset = string.ascii_letters
-        indicator_list = [
-            {'indicator': generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.DOMAIN.name, 'description': 'evil domain (unittests)'},
-            {'indicator': generate_rand_string(3, charset=charset) + "." + generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.HOSTNAME.name, 'description': 'evil hostname (unittests)'}
-        ]
-        name = "Pyclient-tlp-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
-        tlps = ['red', 'amber', 'green', 'white']
-        for tlp in tlps:
-            # print("test_create_pulse_tlp: submitting pulse: {}".format({"name": name, "tlp": tlp}))
-            response = self.otx.create_pulse(name=name, public=False, tlp=tlp, indicators=indicator_list)
-            self.assertTrue(response.get('name', '') == name)
-            self.assertTrue(response.get('TLP', '') == tlp)
-            self.assertFalse(response.get('public'))
-        return
+def test_create_pulse_tlp(self):
+    """
+    Test: pulse with each TLP.
+    """
+    charset = string.ascii_letters
+    indicator_list = [
+        {'indicator': generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.DOMAIN.name, 'description': 'evil domain (unittests)'},
+        {'indicator': generate_rand_string(3, charset=charset) + "." + generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.HOSTNAME.name, 'description': 'evil hostname (unittests)'}
+    ]
+    name = "Pyclient-tlp-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
+    tlps = ['red', 'amber', 'green', 'white']
+    for tlp in tlps:
+        # print("test_create_pulse_tlp: submitting pulse: {}".format({"name": name, "tlp": tlp}))
+        response = self.otx.create_pulse(name=name, public=False, tlp=tlp, indicators=indicator_list)
+        self.assertTrue(response.get('name', '') == name)
+        self.assertTrue(response.get('TLP', '') == tlp)
+        self.assertFalse(response.get('public'))
+    return
 
 
 class TestPulseCreateInvalidKey(TestOTXv2):
