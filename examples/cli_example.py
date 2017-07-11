@@ -1,4 +1,4 @@
-# Very Simple CLI example
+# Very Simple CLI example to get indicator details from Alienvault OTX
 
 from OTXv2 import OTXv2
 import IndicatorTypes
@@ -9,7 +9,7 @@ API_KEY = ''
 OTX_SERVER = 'https://otx.alienvault.com/'
 otx = OTXv2(API_KEY, server=OTX_SERVER)
 
-parser = argparse.ArgumentParser(description='Description of your program')
+parser = argparse.ArgumentParser(description='OTX CLI Example')
 parser.add_argument('-i', '--ip', help='IP eg; 4.4.4.4', required=False)
 parser.add_argument(
     '-d', '--domain', help='Domain eg; alienvault.com', required=False)
