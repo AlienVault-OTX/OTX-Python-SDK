@@ -34,7 +34,7 @@ if args['ip']:
         print 'Unknown or not identified as malicious'
 
 if args['host']:
-    alerts = get_malicious.hostname(otx, args['hostname'])
+    alerts = get_malicious.hostname(otx, args['host'])
     if len(alerts) > 0:
         print 'Identified as potentially malicious'
         print str(alerts)
