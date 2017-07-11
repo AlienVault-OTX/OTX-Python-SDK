@@ -39,7 +39,7 @@ indicators = otx.get_pulse_indicators("pulse_id")
 for indicator in indicators:
     print indicator["indicator"] + indicator["type"]
 # Get everything OTX knows about google.com
-otx.get_indicator_details_full(IndicatorTypes.DOMAIN, "google.com")```
+otx.get_indicator_details_full(IndicatorTypes.DOMAIN, "google.com")
 ```
 
 Additional Examples:
