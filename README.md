@@ -32,7 +32,8 @@ For more information about the particular API calls see  https://otx.alienvault.
 # Example
 
 A trivial example is below:
-```from OTXv2 import OTXv2
+```
+from OTXv2 import OTXv2
 otx = OTXv2("API_KEY")
 # Get all the indicators associated with a pulse
 indicators = otx.get_pulse_indicators("pulse_id")
