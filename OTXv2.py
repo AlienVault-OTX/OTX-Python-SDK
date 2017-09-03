@@ -7,9 +7,9 @@ from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
 
 try:
-    from urllib.parse import urlencode
+    from urllib.parse import urlencode, quote_plus
 except ImportError:
-    from urllib import urlencode
+    from urllib import urlencode, quote_plus
 
 import IndicatorTypes
 
@@ -249,7 +249,7 @@ class OTXv2(object):
         indicator_url = self.create_url(INDICATOR_DETAILS)
         indicator_url += "{indicator_type}/{indicator}/{section}".format(
             indicator_type=indicator_type.slug,
-            indicator=indicator,
+            indicator=quote_plus(indicator),
             section=section
         )
         return indicator_url
