@@ -31,7 +31,7 @@ For more information about the particular API calls see  https://otx.alienvault.
  
 # Example
 
-A trivial example is below:
+Reading contents from OTX:
 ```
 from OTXv2 import OTXv2
 from OTXv2 import IndicatorTypes
@@ -42,6 +42,18 @@ for indicator in indicators:
     print indicator["indicator"] + indicator["type"]
 # Get everything OTX knows about google.com
 otx.get_indicator_details_full(IndicatorTypes.DOMAIN, "google.com")
+```
+Adding content to OTX:
+```
+from OTXv2 import OTXv2
+otx = OTXv2("API_LEY")
+name = 'Test Pulse'
+indicators = [
+    {'indicator': '69.73.130.198', 'type': 'IPv4'},
+    {'indicator': 'aoldaily.com', 'type': 'Domain'}
+]
+response = otx.create_pulse(name=name ,public=True ,indicators=indicators ,tags=[] , references=[])
+print str(response)
 ```
 
 Additional Examples:
