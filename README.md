@@ -46,7 +46,7 @@ otx.get_indicator_details_full(IndicatorTypes.DOMAIN, "google.com")
 Adding content to OTX:
 ```
 from OTXv2 import OTXv2
-otx = OTXv2("API_LEY")
+otx = OTXv2("API_KEY")
 name = 'Test Pulse'
 indicators = [
     {'indicator': '69.73.130.198', 'type': 'IPv4'},
