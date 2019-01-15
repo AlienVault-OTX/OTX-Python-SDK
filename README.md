@@ -61,5 +61,6 @@ Additional Examples:
 - Use OTX to determine if files, domains, IPs or URLs are malicious - https://github.com/AlienVault-OTX/OTX-Python-SDK/blob/master/examples/is_malicious/is_malicious.py
 - Store all the indicators from pulses you are subscribed to in a CSV file - https://github.com/Neo23x0/signature-base/blob/master/threatintel/get-otx-iocs.py
 - Maintain a feed of indicators in a pulse for users - https://github.com/AlienVault-OTX/OTX-Python-SDK/blob/master/examples/update_feed.py
+- Adding domains to an existing pulse - https://github.com/AlienVault-OTX/OTX-Python-SDK/blob/master/examples/PulseManager.py
 
 More examples are at https://otx.alienvault.com/api/
