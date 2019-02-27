@@ -419,6 +419,40 @@ class OTXv2(object):
         return response
 
 
+    def add_pulse_indicators(self, pulse_id, new_indicators):
+        """
+        Adds indicators to a pulse
+        :param pulse_id: The pulse you are replacing the indicators with
+        :param new_indicators: The set of new indicators
+        :return: Return the new pulse
+
+        """
+        current_indicators = self.get_pulse_indicators(pulse_id)
+        current_indicator_values = []
+        current_indicator_indicators = []
+
+        for indicator in current_indicators:
+            current_indicator_values.append(indicator["indicator"])
+            current_indicator_indicators.append(indicator)
+
+        new_indicator_values = []
+        indicators_to_add = []
+
+        for indicator in new_indicators:
+            new_indicator_value = indicator["indicator"]
+            new_indicator_values.append(new_indicator_value)
+            if new_indicator_value not in current_indicator_values:
+                indicators_to_add.append(indicator)
+
+        body = {
+            'indicators': {
+                'add': indicators_to_add
+            }
+        }
+
+        response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
+        return response
+
     def replace_pulse_indicators(self, pulse_id, new_indicators):
         """
         Replaces indicators in a pulse - new indicators are added, those that are no longer present are set to expire
