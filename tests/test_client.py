@@ -1,17 +1,17 @@
 import datetime
 import json
 import os
-import pprint
 import requests
+import shutil
 import string
+import tempfile
 import time
 import unittest
 
 from utils import generate_rand_string
-from OTXv2 import OTXv2, InvalidAPIKey, BadRequest, RetryError
+from OTXv2 import OTXv2, OTXv2Cached, InvalidAPIKey, BadRequest, RetryError
 import IndicatorTypes
 from patch_pulse import PatchPulse
-
 
 
 STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
@@ -32,7 +32,8 @@ def create_user(username, password, email):
 
 
 def delete_user(username):
-    r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users":  [username ] })
+    r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users": [username]})
+    return r.json()
 
 
 # Class names should start with "Test"
@@ -255,7 +256,7 @@ class TestPulseCreate(TestOTXv2):
         # print("test_create_pulse_simple submitting pulse: " + name)
         response = self.otx.create_pulse(name=name,
                                          public=False,
-                                         indicators=[],
+                                         indicators=[{'indicator': "8.8.8.8", 'type': IndicatorTypes.IPv4.name}],
                                          tags=[],
                                          references=[])
         self.assertIsNotNone(response)
@@ -435,8 +436,146 @@ class TestRequests(TestOTXv2):
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, user_agent='foo')
         self.assertEqual(o.headers['User-Agent'], 'foo')
 
+
+class TestOTXv2Cached(unittest.TestCase):
+    user = "qatester-github-temp-user"
+    author1 = "qatester-github-temp-a1"
+    author2 = "qatester-github-temp-a2"
+    otx = {}
+
+    @classmethod
+    def setUpClass(cls):
+
+        for u in [cls.user, cls.author1, cls.author2]:
+            cls.otx[u] = OTXv2Cached(
+                create_user(u, "password", u + "@aveng.us"),
+                cache_dir=tempfile.mkdtemp(),
+                server=ALIEN_DEV_SERVER,
+            )
+
+    @classmethod
+    def tearDownClass(cls):
+        for u in [cls.user, cls.author1, cls.author2]:
+            delete_user(u)
+            shutil.rmtree(cls.otx[u].cache_dir)
+
+    def test_basic(self):
+        def _names(pulses):
+            return sorted([x['name'] for x in pulses])
+
+        def _ind(indicators):
+            return sorted([x['indicator'] for x in indicators])
+
+        t1 = datetime.datetime.utcnow(), datetime.datetime.utcnow()
+
+        # new user, no subs except the default, AV.  Unsub from AV user and feed should be empty
+        self.otx[self.user].unsubscribe_from_user("AlienVault")
+
+        self.otx[self.user].update()
+        t2 = self.otx[self.user].last_subscription_fetch, self.otx[self.user].last_events_fetch
+        self.assertEqual(self.otx[self.user].getall(), [])
+        self.assertEqual(self.otx[self.user].getall(author_name=self.author1), [])
+        self.assertEqual(self.otx[self.user].getall(author_name=self.author2), [])
+        self.assertEqual(self.otx[self.user].getall(modified_since=t1[0]), [])
+        self.assertEqual(list(self.otx[self.user].get_all_indicators(modified_since=t1[0])), [])
+
+        # let's have the user create a pulse and verify that it shows in their feed
+        self.otx[self.user].create_pulse(
+            name="xxup1",
+            public=True,
+            indicators=[{'indicator': "8.8.8.8", 'type': IndicatorTypes.IPv4.name}],
+        )
+
+        # let's have author1 create a pulse - we're not subbed to him so it won't show at first
+        self.otx[self.author1].create_pulse(
+            name="xa1p1",
+            public=True,
+            indicators=[{'indicator': "9.9.9.9", 'type': IndicatorTypes.IPv4.name}],
+        )
+
+        # let's have author2 create a pulse - we're not subbed to him so it won't show at first
+        self.otx[self.author2].create_pulse(
+            name="xa2p1",
+            public=True,
+            indicators=[{'indicator': "9.9.9.10", 'type': IndicatorTypes.IPv4.name}],
+        )
+
+        self.otx[self.user].update()
+        t3 = self.otx[self.user].last_subscription_fetch, self.otx[self.user].last_events_fetch
+        self.assertEqual(_names(self.otx[self.user].getall()), ['xxup1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author1)), [])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author2)), [])
+        self.assertEqual(_names(self.otx[self.user].getall(modified_since=t1[0])), ['xxup1'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(modified_since=t1[0]))), ['8.8.8.8'])
+
+        # subscribe to author1, now we should see his pulse
+        self.otx[self.user].subscribe_to_user(self.author1)
+
+        self.otx[self.user].update()
+        t4 = self.otx[self.user].last_subscription_fetch, self.otx[self.user].last_events_fetch
+        self.assertEqual(_names(self.otx[self.user].getall()), ['xa1p1', 'xxup1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author1)), ['xa1p1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author2)), [])
+        self.assertEqual(_names(self.otx[self.user].getall(modified_since=t1[0])), ['xa1p1', 'xxup1'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(modified_since=t1[0]))), ['8.8.8.8', '9.9.9.9'])
+
+        # subscribe to author2, now we should see his pulse
+        self.otx[self.user].subscribe_to_user(self.author2)
+
+        self.otx[self.user].update()
+        t4 = self.otx[self.user].last_subscription_fetch, self.otx[self.user].last_events_fetch
+        self.assertEqual(_names(self.otx[self.user].getall()), ['xa1p1', 'xa2p1', 'xxup1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author1)), ['xa1p1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author2)), ['xa2p1'])
+        self.assertEqual(_names(self.otx[self.user].getall(modified_since=t1[0])), ['xa1p1', 'xa2p1', 'xxup1'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(modified_since=t1[0]))), ['8.8.8.8', '9.9.9.10', '9.9.9.9'])
+
+        # let's have author2 create another pulse
+        self.otx[self.author2].create_pulse(
+            name="xa2p2",
+            public=True,
+            indicators=[{'indicator': "foo.com", 'type': IndicatorTypes.DOMAIN.name}],
+        )
+
+        self.otx[self.user].update()
+        t5 = self.otx[self.user].last_subscription_fetch, self.otx[self.user].last_events_fetch
+        self.assertEqual(_names(self.otx[self.user].getall()), ['xa1p1', 'xa2p1', 'xa2p2', 'xxup1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author1)), ['xa1p1'])
+        self.assertEqual(_names(self.otx[self.user].getall(author_name=self.author2)), ['xa2p1', 'xa2p2'])
+        self.assertEqual(_names(self.otx[self.user].getall(modified_since=t1[0])), ['xa1p1', 'xa2p1', 'xa2p2', 'xxup1'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(modified_since=t1[0]))), ['8.8.8.8', '9.9.9.10', '9.9.9.9', 'foo.com'])
+
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(modified_since=t4[0]))), ['9.9.9.10', 'foo.com'])
+
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(indicator_types=[IndicatorTypes.DOMAIN]))), ['foo.com'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(author_name=self.author1))), ['9.9.9.9'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(author_name=self.author2))), ['9.9.9.10', 'foo.com'])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(author_name=self.author1, indicator_types=[IndicatorTypes.DOMAIN]))), [])
+        self.assertEqual(_ind(list(self.otx[self.user].get_all_indicators(author_name=self.author2, indicator_types=[IndicatorTypes.DOMAIN]))), ['foo.com'])
+
+    def test_passthrough(self):
+        """
+        A simple test that demonstrates that any function not in OTXv2Cached will flow through to it's parent class
+        """
+        res = self.otx[self.user].search_pulses("Russian")
+        pulses = res.get('results')
+        self.assertTrue(len(pulses) > 0)
+        self.assertIsNotNone(pulses)
+        self.assertTrue(len(pulses) > 0)
+        pulse = pulses[0]
+        self.assertIsNotNone(pulse.get('modified', None))
+        self.assertIsNotNone(pulse.get('author_name', None))
+        self.assertIsNotNone(pulse.get('id', None))
+        self.assertIsNotNone(pulse.get('tags', None))
+        self.assertIsNotNone(pulse.get('references', None))
+        self.assertIsNotNone(res.get('exact_match'))
+
+
 if __name__ == '__main__':
     username = "qatester-github-temp"
-    ALIEN_API_APIKEY = create_user(username, "password", username + "@aveng.us")
-    unittest.main()
-    delete_user(username)
+
+    try:
+        ALIEN_API_APIKEY = create_user(username, "password", username + "@aveng.us")
+        unittest.main()
+    finally:
+        print(delete_user(username))

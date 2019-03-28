@@ -2,6 +2,10 @@
 
 import json
 import datetime
+import dateutil.parser
+import logging
+import os
+import pytz
 import requests
 from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
@@ -24,6 +28,12 @@ PULSE_INDICATORS = PULSE_DETAILS + "indicators"                             # pu
 PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                       # create pulse
 INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                    # indicator details
 VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)    # indicator details
+SUBSCRIBE_USER = "{}/users/{{}}/subscribe/".format(API_V1_ROOT)               # subscribe to user
+UNSUBSCRIBE_USER = "{}/users/{{}}/unsubscribe/".format(API_V1_ROOT)           # unsubscribe to user
+
+
+# logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
 
 class InvalidAPIKey(Exception):
@@ -283,6 +293,9 @@ class OTXv2(object):
         """
         args = {'limit': limit}
         if modified_since is not None:
+            if isinstance(modified_since, (datetime.datetime, datetime.date)):
+                modified_since = modified_since.isoformat()
+
             args['modified_since'] = modified_since
         if author_name is not None:
             args['author_name'] = author_name
@@ -363,7 +376,7 @@ class OTXv2(object):
         resource.update(additional_fields)
         return resource
 
-    def get_all_indicators(self, indicator_types=IndicatorTypes.all_types, max_page=None):
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
@@ -371,19 +384,22 @@ class OTXv2(object):
         :return: yields the indicator object for use
         """
         name_list = IndicatorTypes.to_name_list(indicator_types)
-        for pulse in self.getall_iter(max_page=max_page):
+        for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page):
             for indicator in pulse["indicators"]:
                 if indicator["type"] in name_list:
                     yield indicator
 
-    def getevents_since(self, timestamp, limit=20):
+    def getevents_since(self, timestamp, limit=20, iter=False):
         """
         Get all events (activity) created or updated since a timestamp
         :param timestamp: ISO formatted datetime string to restrict results (not older than timestamp).
         :param limit: The page size to retrieve in a single request
         :return: the consolidated set of pulses for the user
         """
-        return self.walkapi(self.create_url(EVENTS, limit=limit, since=timestamp))
+        if isinstance(timestamp, (datetime.datetime, datetime.date)):
+            timestamp = timestamp.isoformat()
+
+        return self.walkapi(self.create_url(EVENTS, limit=limit, since=timestamp, iter=iter))
 
     def get_pulse_details(self, pulse_id):
         """
@@ -403,7 +419,6 @@ class OTXv2(object):
         """
         return self.walkapi(self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit))
 
-
     def edit_pulse(self, pulse_id, body):
         """
         Edits a pulse
@@ -417,7 +432,6 @@ class OTXv2(object):
         """
         response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
         return response
-
 
     def add_pulse_indicators(self, pulse_id, new_indicators):
         """
@@ -525,3 +539,243 @@ class OTXv2(object):
             indicator_url = self.create_indicator_detail_url(indicator_type, indicator, section)
             indicator_dict[section] = self.get(indicator_url)
         return indicator_dict
+
+    def subscribe_to_user(self, username):
+        url = SUBSCRIBE_USER.format(username)
+        return self.get(url)
+
+    def unsubscribe_from_user(self, username):
+        url = UNSUBSCRIBE_USER.format(username)
+        return self.get(url)
+
+    def unsubscribe_from_pulse(self, pulse_id):
+        pass
+
+    def subscribe_to_pulse(self, pulse_id):
+        pass
+
+
+class OTXv2Cached(OTXv2):
+    DATA_FIELDS = {
+        'last_subscription_fetch': 'datetime',
+        'last_events_fetch': 'datetime',
+    }
+
+    def __init__(self, api_key, cache_dir=None, max_age=None, *args, **kwargs):
+        super(OTXv2Cached, self).__init__(api_key=api_key, *args, **kwargs)
+
+        self.cache_dir = cache_dir or os.path.expanduser("~/.otxv2_cache")
+        self.max_age = max_age
+        self.last_subscription_fetch = None
+        self.last_events_fetch = None
+
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir)
+
+        logger.info("Using cache_dir=%s, max_age=%s", self.cache_dir, self.max_age)
+
+        self.load_data()
+
+    def now(self):
+        return pytz.utc.localize(datetime.datetime.utcnow())
+
+    def load_data(self):
+        datfile = os.path.join(self.cache_dir, 'data.json')
+
+        if os.path.exists(datfile):
+            with open(datfile) as f:
+                data = json.load(f)
+                for k, v in self.DATA_FIELDS.items():
+                    val = data[k]
+                    if v == 'datetime':
+                        val = dateutil.parser.parse(val) if val else None
+
+                    setattr(self, k, val)
+
+    def save_data(self):
+        datfile = os.path.join(self.cache_dir, 'data.json')
+
+        data = {}
+        for k, v in self.DATA_FIELDS.items():
+            val = getattr(self, k)
+            if v == 'datetime':
+                val = val.isoformat() if val else None
+            data[k] = val
+
+        with open(datfile, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def update(self):
+        logger.info("last_subscription_fetch = %r", self.last_subscription_fetch)
+        if self.last_subscription_fetch is None or self.last_events_fetch is None:
+            self.initial_fetch()
+            self.last_subscription_fetch = self.last_events_fetch = self.now() - datetime.timedelta(minutes=10)
+            self.save_data()
+            return
+
+        self.apply_events()
+
+        max_date = datetime.datetime(1900, 1, 1)
+        for p in super(OTXv2Cached, self).getall(modified_since=self.last_subscription_fetch, iter=True):
+            max_date = max(max_date, dateutil.parser.parse(p['modified']))
+            logger.info("downloading %r - %r", p['name'], p['modified'])
+            self.save_pulse(p)
+
+        self.last_subscription_fetch = max_date
+        self.save_data()
+
+    def initial_fetch(self, author_name=None):
+        logger.info("Performing initial fetch (author_name=%r)", author_name)
+        for p in super(OTXv2Cached, self).getall(
+            author_name=author_name, modified_since=self.now() - self.max_age if self.max_age else None, iter=True, limit=100
+        ):
+            self.save_pulse(p)
+
+    def apply_events(self):
+        logging.info("last_events_fetch = %r", self.last_events_fetch)
+        max_date = datetime.datetime(1900, 1, 1)
+        for event in self.getevents_since(timestamp=self.last_events_fetch):
+            max_date = max(max_date, dateutil.parser.parse(event['created']))
+            if event['object_type'] == 'pulse':
+                self.apply_pulse_event(event)
+            elif event['object_type'] == 'user':
+                self.apply_user_event(event)
+            elif event['object_type'] == 'group':
+                self.apply_group_event(event)
+            else:
+                logger.error("Unknown/unhandled event type: %r", event)
+
+        self.last_events_fetch = max_date
+        self.save_data()
+
+    def apply_pulse_event(self, e):
+        if e['action'] == 'subscribe':
+            self.save_pulse(self.get_pulse_details(e['object_id']))
+        elif e['action'] == 'unsubscribe':
+            self.delete_pulse(e['object_id'])
+        else:
+            logger.error("Unknown action in pulse event: {}", e)
+
+    def apply_user_event(self, e):
+        if e['action'] == 'subscribe':
+            self.initial_fetch(author_name=e['object_id'])
+        elif e['action'] == 'unsubscribe':
+            to_delete = self.find_pulses(author_names=[e['object_id']])
+            for pid in to_delete:
+                self.delete_pulse(pid)
+        else:
+            logger.error("Unknown action in user event: {}", e)
+
+    def apply_group_event(self, e):
+        pass
+
+    def pulse_cache_dir(self, pulse_id, create=False):
+        pulse_dir = os.path.join(self.cache_dir, pulse_id[-1], pulse_id[-2])
+        if create and not os.path.exists(pulse_dir):
+            os.makedirs(pulse_dir)
+
+        return pulse_dir
+
+    def pulse_file(self, pulse_id, create=False):
+        pulse_file = pulse_id + '.json'
+        return os.path.join(self.pulse_cache_dir(pulse_id, create=create), pulse_file)
+
+    def save_pulse(self, p):
+        logger.info("Saving pulse (id=%r)", p['id'])
+        with open(self.pulse_file(p['id'], create=True), 'w') as f:
+            json.dump(p, f, indent=2)
+
+    def delete_pulse(self, pulse_id):
+        logger.info("Deleting pulse (id=%r)", pulse_id)
+        pulse_file = self.pulse_file(pulse_id, create=False)
+        if os.path.exists(pulse_file):
+            os.unlink(pulse_file)
+
+    def load_pulse(self, pulse_id):
+        pulse_file = self.pulse_file(pulse_id, create=False)
+        if not os.path.exists(pulse_file):
+            return None
+        with open(pulse_file) as f:
+            p = json.load(f)
+
+        return p
+
+    def find_pulses(self, return_type='pulse_id', author_names=None, modified_since=None):
+        author_names = set([x.lower() for x in author_names]) if author_names else None
+        modified_since = self.fix_date(modified_since)
+
+        for dirName, subdirList, fileList in os.walk(self.cache_dir):
+            for fname in fileList:
+                if fname == "data.json":
+                    continue
+
+                pulse_id = os.path.splitext(fname)[0]
+                pulse = None
+                if author_names or modified_since or return_type == 'pulse':
+                    pulse = self.load_pulse(pulse_id)
+
+                if author_names:
+                    if pulse['author_name'].lower() not in author_names:
+                        continue
+
+                if modified_since:
+                    if self.fix_date(pulse['modified']) < modified_since:
+                        continue
+
+                if return_type == 'pulse_id':
+                    yield pulse_id
+                elif return_type == 'pulse':
+                    yield pulse
+                else:
+                    raise Exception("return_type should be one of ['pulse_id', 'pulse']")
+
+    @classmethod
+    def fix_date(cls, dtstr):
+        if dtstr is None:
+            return None
+
+        if isinstance(dtstr, datetime.datetime):
+            dt = dtstr
+        else:
+            dt = dateutil.parser.parse(dtstr) if dtstr else None
+
+        if dt and dt.tzinfo is None:
+            dt = pytz.utc.localize(dt)
+
+        return dt
+
+    # FIXME this is unordered...
+    def getall(self, modified_since=None, author_name=None, iter=False, limit=None, max_page=None):
+        if iter:
+            return self.getall_iter(modified_since=modified_since, author_name=author_name, limit=limit, max_page=max_page)
+        else:
+            return list(self.getall_iter(modified_since=modified_since, author_name=author_name, limit=limit, max_page=max_page))
+
+    def getall_iter(self, modified_since=None, author_name=None, iter=False, limit=20, max_page=None):
+        count = 0
+        for p in self.find_pulses(
+            modified_since=modified_since,
+            author_names=[author_name] if author_name else None,
+            return_type='pulse',
+        ):
+            yield p
+
+            count += 1
+            if max_page and count > max_page*limit:
+                break
+
+    def getsince(self, timestamp, limit=20, max_page=None):
+        return self.getall(modified_since=timestamp, iter=False, limit=limit, max_page=max_page)
+
+    def getsince_iter(self, timestamp, limit=20, max_page=None):
+        return self.getall(modified_since=timestamp, iter=True, limit=limit, max_page=max_page)
+
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None):
+        name_list = IndicatorTypes.to_name_list(indicator_types)
+        for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page):
+            for indicator in pulse["indicators"]:
+                if indicator["type"] in name_list:
+                    yield indicator
+
+
+
