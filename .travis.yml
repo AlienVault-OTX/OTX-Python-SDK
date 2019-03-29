@@ -7,7 +7,7 @@ python:
 
 install:
   - python setup.py install
-  - pip install requests python-dateutil
+  - pip install requests python-dateutil pytz
 
 before_script:
  - chmod +x tests/test_client.py
