@@ -615,7 +615,7 @@ class OTXv2Cached(OTXv2):
 
         self.apply_events()
 
-        max_date = datetime.datetime(1900, 1, 1)
+        max_date = self.last_subscription_fetch or datetime.datetime(1900, 1, 1)
         for p in super(OTXv2Cached, self).getall(modified_since=self.last_subscription_fetch, iter=True):
             max_date = max(max_date, dateutil.parser.parse(p['modified']))
             logger.info("downloading %r - %r", p['name'], p['modified'])
@@ -633,7 +633,7 @@ class OTXv2Cached(OTXv2):
 
     def apply_events(self):
         logging.info("last_events_fetch = %r", self.last_events_fetch)
-        max_date = datetime.datetime(1900, 1, 1)
+        max_date = self.last_events_fetch or datetime.datetime(1900, 1, 1)
         for event in self.getevents_since(timestamp=self.last_events_fetch):
             max_date = max(max_date, dateutil.parser.parse(event['created']))
             if event['object_type'] == 'pulse':
