@@ -243,7 +243,6 @@ class OTXv2(object):
         if kwargs:
             uri += "?" + urlencode(kwargs)
 
-        # print uri
         return uri
 
     def create_indicator_detail_url(self, indicator_type, indicator, section='general'):
@@ -615,9 +614,9 @@ class OTXv2Cached(OTXv2):
 
         self.apply_events()
 
-        max_date = self.last_subscription_fetch or datetime.datetime(1900, 1, 1)
+        max_date = self.last_subscription_fetch or datetime.datetime(1900, 1, 1, tzinfo=pytz.utc)
         for p in super(OTXv2Cached, self).getall(modified_since=self.last_subscription_fetch, iter=True):
-            max_date = max(max_date, dateutil.parser.parse(p['modified']))
+            max_date = max(max_date, pytz.utc.localize(dateutil.parser.parse(p['modified'])))
             logger.info("downloading %r - %r", p['name'], p['modified'])
             self.save_pulse(p)
 
@@ -633,9 +632,9 @@ class OTXv2Cached(OTXv2):
 
     def apply_events(self):
         logging.info("last_events_fetch = %r", self.last_events_fetch)
-        max_date = self.last_events_fetch or datetime.datetime(1900, 1, 1)
+        max_date = self.last_events_fetch or datetime.datetime(1900, 1, 1, tzinfo=pytz.utc)
         for event in self.getevents_since(timestamp=self.last_events_fetch):
-            max_date = max(max_date, dateutil.parser.parse(event['created']))
+            max_date = max(max_date, pytz.utc.localize(dateutil.parser.parse(event['created'])))
             if event['object_type'] == 'pulse':
                 self.apply_pulse_event(event)
             elif event['object_type'] == 'user':

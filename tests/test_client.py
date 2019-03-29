@@ -26,15 +26,18 @@ def create_user(username, password, email):
     """
     Create a user, and get the API key
     """
+    print("creating user {}".format(username))
     requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/setup/', json={"users": [{ "username": username, "password": password, "email": email}]})
     r = requests.post(ALIEN_DEV_SERVER + 'auth/login', json={"username": username, "password": password})
     j = json.loads(r.text)
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': j['key']})
     j = r.json()
+    print(".........................", j)
     return j['api_keys'][0]['api_key']
 
 
 def delete_user(username):
+    print("deleting user {}".format(username))
     r = requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/cleanup/', json={"users": [username]})
     return r.json()
 
@@ -371,6 +374,7 @@ def test_create_pulse_and_edit_via_patch_pulse(self):
     self.assertTrue('addtag1' in new_tags)
     return
 
+
 def test_create_pulse_tlp(self):
     """
     Test: pulse with each TLP.
@@ -441,9 +445,9 @@ class TestRequests(TestOTXv2):
 
 
 class TestOTXv2Cached(unittest.TestCase):
-    user = "qatester-github-temp-user-{}".format(rand)
-    author1 = "qatester-github-temp-a1-{}".format(rand)
-    author2 = "qatester-github-temp-a2-{}".format(rand)
+    user = "qatester-git-u1-{}".format(rand)
+    author1 = "qatester-gith-a1-{}".format(rand)
+    author2 = "qatester-gith-a2-{}".format(rand)
     otx = {}
 
     @classmethod
@@ -575,7 +579,7 @@ class TestOTXv2Cached(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    username = "qatester-github-temp-{}".format(rand)
+    username = "qatester-git-{}".format(rand)
 
     try:
         ALIEN_API_APIKEY = create_user(username, "password", username + "@aveng.us")
