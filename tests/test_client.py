@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import random
 import requests
 import shutil
 import string
@@ -17,6 +18,8 @@ from patch_pulse import PatchPulse
 STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 ALIEN_DEV_SERVER = os.getenv('X_OTX_DEV_SERVER', "")
 ALIEN_API_APIKEY = ""
+
+rand = random.randint(0, 999999)
 
 
 def create_user(username, password, email):
@@ -438,9 +441,9 @@ class TestRequests(TestOTXv2):
 
 
 class TestOTXv2Cached(unittest.TestCase):
-    user = "qatester-github-temp-user"
-    author1 = "qatester-github-temp-a1"
-    author2 = "qatester-github-temp-a2"
+    user = "qatester-github-temp-user-{}".format(rand)
+    author1 = "qatester-github-temp-a1-{}".format(rand)
+    author2 = "qatester-github-temp-a2-{}".format(rand)
     otx = {}
 
     @classmethod
@@ -572,7 +575,7 @@ class TestOTXv2Cached(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    username = "qatester-github-temp"
+    username = "qatester-github-temp-{}".format(rand)
 
     try:
         ALIEN_API_APIKEY = create_user(username, "password", username + "@aveng.us")
