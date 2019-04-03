@@ -32,7 +32,7 @@ def create_user(username, password, email):
     j = json.loads(r.text)
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': j['key']})
     j = r.json()
-    print(".........................", j)
+#    print(".........................", j)
     return j['api_keys'][0]['api_key']
 
 
@@ -255,6 +255,12 @@ class TestIndicatorDetails(TestOTXv2):
         self.assertTrue(sorted(full_details.keys()) == sorted(IndicatorTypes.IPv4.sections))
         # pprint.pprint(full_details)
 
+    def test_get_indicator_details_Email_full(self):
+        # print("test_get_indicator_details_IPv4_full")
+        full_details = self.otx.get_indicator_details_full(IndicatorTypes.EMAIL, "me@rustybrooks.com")
+        self.assertTrue(sorted(full_details.keys()) == sorted(IndicatorTypes.EMAIL.sections))
+        # pprint.pprint(full_details)
+
 
 class TestPulseCreate(TestOTXv2):
     def test_create_pulse_simple(self):
@@ -429,7 +435,7 @@ class TestValidateIndicator(TestOTXv2):
 
 
 class TestRequests(TestOTXv2):
-    def test_backoff(self):
+    def _test_backoff(self):
         with self.assertRaises(RetryError):
             t1 = time.time()
             self.otx.get('error/500/')

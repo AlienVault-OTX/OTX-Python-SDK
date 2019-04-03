@@ -13,7 +13,7 @@ class IndicatorTypes(object):
         self.name = name
         self.description = description
         self.api_support = api_support
-        self.sections = sections
+        self.sections = sections or []
         self.slug = slug
 
     def __str__(self):
