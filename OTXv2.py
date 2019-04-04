@@ -418,6 +418,10 @@ class OTXv2(object):
         :param pulse_id: object id for pulse
         :return: Pulse as dict
         """
+
+        if not isinstance(pulse_id, string_types) or not re.match(r"^[0-9a-zA-Z]{24}$", pulse_id):
+           raise BadRequest("pulse_id should be a 24 character hex string")
+
         pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id))
         meta_data = self.get(pulse_url)
         return meta_data
@@ -440,7 +444,7 @@ class OTXv2(object):
         """
         Edits a pulse
         :param pulse_id: The pulse you are editing the indicators in
-        :param body: The complete set of indicators this pulse will now contain
+        :param body: The set of diffs you wish to make to the pulse indicators
         eg; body: {
             "description": "New Description",
             "tags": {"add": ["addtag1", "addtag2"], "remove": ["remtag1"]}
