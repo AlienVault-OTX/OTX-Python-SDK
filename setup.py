@@ -12,5 +12,5 @@ setup(
     url='https://github.com/AlienVault-Labs/OTX-Python-SDK',
     download_url='https://github.com/AlienVault-Labs/OTX-Python-SDK/tarball/1.5',
     py_modules=['OTXv2', 'IndicatorTypes','patch_pulse'],
-    install_requires=['simplejson', 'requests', 'python-dateutil', 'pytz']
+    install_requires=['requests', 'python-dateutil', 'pytz']
 )

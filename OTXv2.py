@@ -6,9 +6,11 @@ import dateutil.parser
 import logging
 import os
 import pytz
+import re
 import requests
 from requests.packages.urllib3.util import Retry
 from requests.adapters import HTTPAdapter
+from six import string_types
 
 try:
     from urllib.parse import urlencode
@@ -39,6 +41,14 @@ logger = logging.getLogger()
 class InvalidAPIKey(Exception):
     def __init__(self, value=None):
         self.value = value or "Invalid API Key"
+
+    def __str__(self):
+        return repr(self.value)
+
+
+class NotFound(Exception):
+    def __init__(self, value=None):
+        self.value = value or "Not Found"
 
     def __str__(self):
         return repr(self.value)
@@ -103,6 +113,8 @@ class OTXv2(object):
             raise InvalidAPIKey()
         elif response.status_code == 400:
             raise BadRequest(_response_json())
+        elif response.status_code == 404:
+            raise NotFound()
         elif str(response.status_code)[0] != "2":
             raise Exception("Unexpected http code: %r, response=%r", response.status_code, _response_json())
 
@@ -416,7 +428,13 @@ class OTXv2(object):
         :param pulse_id: Object ID specify which pulse to get indicators from
         :return: Indicator list
         """
-        return self.walkapi(self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit))
+
+        if not isinstance(pulse_id, string_types) or not re.match(r"^[0-9a-zA-Z]{24}$", pulse_id):
+           raise BadRequest("pulse_id should be a 24 character hex string")
+
+        url = PULSE_DETAILS + str(pulse_id) + "/indicators"
+        url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit)        
+        return self.walkapi(url)
 
     def edit_pulse(self, pulse_id, body):
         """

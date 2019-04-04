@@ -10,7 +10,7 @@ import time
 import unittest
 
 from utils import generate_rand_string
-from OTXv2 import OTXv2, OTXv2Cached, InvalidAPIKey, BadRequest, RetryError
+from OTXv2 import OTXv2, OTXv2Cached, InvalidAPIKey, BadRequest, RetryError, NotFound
 import IndicatorTypes
 from patch_pulse import PatchPulse
 
@@ -238,6 +238,19 @@ class TestPulseDetails(TestOTXv2):
             self.assertIsNotNone(indicator.get('indicator'))
             self.assertIsNotNone(indicator.get('type'))
 
+    def test_get_pulse_indicators_bad_pulse_id(self):
+        with self.assertRaises(NotFound):  # not an existing pulse
+            res = self.otx.get_pulse_indicators("a"*24)
+
+        with self.assertRaises(BadRequest):   # not enough characters
+            res = self.otx.get_pulse_indicators("aaaaaa")
+
+        with self.assertRaises(BadRequest):   # too many characters
+            res = self.otx.get_pulse_indicators("a"*25)
+
+        with self.assertRaises(BadRequest):   # not a string
+            res = self.otx.get_pulse_indicators(1)
+
 
 class TestIndicatorDetails(TestOTXv2):
     def test_get_indicator_details_IPv4_by_section(self):
@@ -435,7 +448,7 @@ class TestValidateIndicator(TestOTXv2):
 
 
 class TestRequests(TestOTXv2):
-    def _test_backoff(self):
+    def test_backoff(self):
         with self.assertRaises(RetryError):
             t1 = time.time()
             self.otx.get('error/500/')
