@@ -21,7 +21,7 @@ STRP_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 ALIEN_DEV_SERVER = os.getenv('X_OTX_DEV_SERVER', "")
 ALIEN_API_APIKEY = ""
 
-rand = random.randint(0, 999999)
+rand = random.randint(0, 1e9)
 
 
 def create_user(username, password, email):
@@ -476,8 +476,13 @@ class TestSubmissions(TestOTXv2):
 
     def test_submit_file(self):
         data = "print('{} {}')".format(self.rand1, self.rand2)
+        try:
+            contents = bytes(data, encoding='utf8')
+        except TypeError:
+            contents = bytes(data)
+
         filename = 'test{}.py'.format(self.rand1)
-        r = self.otx.submit_file(filename=filename, file_handle=io.BytesIO(bytes(data)))
+        r = self.otx.submit_file(filename=filename, file_handle=io.BytesIO(contents))
         self.assertDictEqual(r, {
             u'result': u'added',
             u'sha256': hashlib.sha256(data).hexdigest(),
@@ -485,7 +490,7 @@ class TestSubmissions(TestOTXv2):
         })
 
         r = self.otx.submitted_files()
-        # self.assertEqual(r[0]['file_name'], filename)
+        self.assertEqual(r[0]['file_name'], filename)
 
     def test_submit_url(self):
         u = "http://flannelcat.rustybrooks.com/xxx/{}".format(self.rand1)
@@ -493,7 +498,7 @@ class TestSubmissions(TestOTXv2):
         self.assertDictEqual(r, {u'result': u'added', u'status': u'ok'})
 
         r = self.otx.submitted_urls()
-        # self.assertEquals(r[0]['url'], u)
+        self.assertEquals(r[0]['url'], u)
 
     def test_submit_urls(self):
         u1 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand1)
@@ -512,10 +517,10 @@ class TestSubmissions(TestOTXv2):
         })
 
         r = self.otx.submitted_urls()
-        #self.assertEquals(
-        #    sorted([x['url'] for x in r[:2]]),
-        #    sorted([u1, u2])
-        #)
+        self.assertEquals(
+            sorted([x['url'] for x in r[:2]]),
+            sorted([u1, u2])
+        )
 
 
 class TestOTXv2Cached(unittest.TestCase):
