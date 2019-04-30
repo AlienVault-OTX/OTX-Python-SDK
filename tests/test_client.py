@@ -493,6 +493,7 @@ class TestSubmissions(TestOTXv2):
         self.assertEqual(r[0]['file_name'], filename)
 
     def test_submit_url(self):
+        time.sleep(2)
         u = "http://flannelcat.rustybrooks.com/xxx/{}".format(self.rand1)
         r = self.otx.submit_url(url=u)
         self.assertDictEqual(r, {u'result': u'added', u'status': u'ok'})
@@ -501,6 +502,7 @@ class TestSubmissions(TestOTXv2):
         self.assertEquals(r[0]['url'], u)
 
     def test_submit_urls(self):
+        time.sleep(2)
         u1 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand1)
         u2 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand2)
         r = self.otx.submit_urls(urls=[u1, u2])
