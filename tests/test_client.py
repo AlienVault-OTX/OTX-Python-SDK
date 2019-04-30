@@ -485,7 +485,7 @@ class TestSubmissions(TestOTXv2):
         r = self.otx.submit_file(filename=filename, file_handle=io.BytesIO(contents))
         self.assertDictEqual(r, {
             u'result': u'added',
-            u'sha256': hashlib.sha256(data).hexdigest(),
+            u'sha256': hashlib.sha256(contents).hexdigest(),
             u'status': u'ok',
         })
 
