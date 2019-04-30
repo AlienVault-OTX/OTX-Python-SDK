@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import json
+import copy
 import datetime
 import dateutil.parser
+import json
 import logging
 import os
 import pytz
@@ -20,19 +21,23 @@ except ImportError:
 import IndicatorTypes
 
 # API URLs
-API_V1_ROOT = "/api/v1"                                                   # API v1 base path
-SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                     # pulse subscriptions
-EVENTS = "{}/pulses/events".format(API_V1_ROOT)                             # events (user actions)
-SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                      # search pulses
-SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                        # search users
-PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                            # pulse meta data
-PULSE_INDICATORS = PULSE_DETAILS + "indicators"                             # pulse indicators
-PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                       # create pulse
-INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                    # indicator details
-VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)    # indicator details
+API_V1_ROOT = "/api/v1"                                                       # API v1 base path
+SUBSCRIBED = "{}/pulses/subscribed".format(API_V1_ROOT)                       # pulse subscriptions
+EVENTS = "{}/pulses/events".format(API_V1_ROOT)                               # events (user actions)
+SEARCH_PULSES = "{}/search/pulses".format(API_V1_ROOT)                        # search pulses
+SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                          # search users
+PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                              # pulse meta data
+PULSE_INDICATORS = PULSE_DETAILS + "indicators"                               # pulse indicators
+PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                         # create pulse
+INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                      # indicator details
+VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)      # indicator details
 SUBSCRIBE_USER = "{}/users/{{}}/subscribe/".format(API_V1_ROOT)               # subscribe to user
 UNSUBSCRIBE_USER = "{}/users/{{}}/unsubscribe/".format(API_V1_ROOT)           # unsubscribe to user
-
+SUBMIT_FILE = "{}/indicators/submit_file".format(API_V1_ROOT)                 # submit malware sample for analysis
+SUBMITTED_FILES = "{}/indicators/submitted_files".format(API_V1_ROOT)         # status of submitted samples
+SUBMIT_URL = "{}/indicators/submit_url".format(API_V1_ROOT)                   # submit url for analysis
+SUBMIT_URLS = "{}/indicators/submit_urls".format(API_V1_ROOT)                 # submit multiple urls for analysis
+SUBMITTED_URLS = "{}/indicators/submitted_urls".format(API_V1_ROOT)          # status of submitted urls
 
 # logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -153,18 +158,21 @@ class OTXv2(object):
         )
         return self.handle_response_errors(response).json()
 
-    def post(self, url, body, **kwargs):
+    def post(self, url, body=None, headers=None, files=None, **kwargs):
         """
         Internal API for POST request on a OTX URL
         :param url: URL to retrieve
         :param body: HTTP Body to send in request
+        :param headers: (optional) dict of headers to use, instead of default headers
+        :param files: (optional) list of file tuples, if posting multipart form data
         :return: response as dict
         """
 
         response = self.session().post(
             self.create_url(url, **kwargs),
-            data=json.dumps(body),
-            headers=self.headers,
+            data=json.dumps(body) if body else None,
+            files=files,
+            headers=headers or self.headers,
             proxies=self.proxies,
         )
         return self.handle_response_errors(response).json()
@@ -275,9 +283,10 @@ class OTXv2(object):
         )
         return indicator_url
 
-    def walkapi_iter(self, url, max_page=None):
+    def walkapi_iter(self, url, max_page=None, max_items=None):
         next_page_url = url
         count = 0
+        item_count = 0
         while next_page_url:
             count += 1
             if max_page and count > max_page:
@@ -285,14 +294,19 @@ class OTXv2(object):
 
             data = self.get(next_page_url)
             for el in data['results']:
+                item_count += 1
+                if max_items and item_count > max_items:
+                    break
+
                 yield el
+
             next_page_url = data["next"]
 
-    def walkapi(self, url, iter=False, max_page=None):
+    def walkapi(self, url, iter=False, max_page=None, max_items=None):
         if iter:
-            return self.walkapi_iter(url, max_page=max_page)
+            return self.walkapi_iter(url, max_page=max_page, max_items=max_items)
         else:
-            return list(self.walkapi_iter(url, max_page=max_page))
+            return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items))
 
     def getall(self, modified_since=None, author_name=None, limit=20, max_page=None, iter=False):
         """
@@ -569,11 +583,70 @@ class OTXv2(object):
         url = UNSUBSCRIBE_USER.format(username)
         return self.get(url)
 
-    def unsubscribe_from_pulse(self, pulse_id):
-        pass
+    def submit_file(self, filename=None, file_handle=None):
+        """
+        Submit malware sample for analysis.  If you pass 'file_handle' then data will be read
+        from it as if it were an open file handle.  If you don't, then the file identified by 'filename'
+        will be opened and read from
 
-    def subscribe_to_pulse(self, pulse_id):
-        pass
+        :param filename: path to file to be uploaded
+        :param file_handle: file-like object that can be read from
+        :return: dict with status of submission
+        """
+        headers = copy.deepcopy(self.headers)
+        headers.pop('Content-Type', None)
+
+        do_close = file_handle is None
+        if file_handle is None:
+            file_handle = open(filename, "rb")
+
+        try:
+            return self.post(
+                self.create_url(SUBMIT_FILE),
+                files={
+                    'file': (
+                        filename or 'unknown',
+                        file_handle,
+                        'application/octet-stream'
+                    )
+                },
+                headers=headers
+            )
+        finally:
+            if do_close:
+                file_handle.close()
+
+    def submitted_files(self, limit=20, first_page=1, max_page=None):
+        """
+        Get status of submitted files
+        :return: list of dicts, each dict describing the status of one file
+        """
+        return self.walkapi(self.create_url(SUBMITTED_FILES, page=first_page, limit=limit), max_page=max_page)
+
+    def submit_url(self, url):
+        """
+        Submit a single url for analysis.  If you have more than one url to submit, use submit_urls
+        :param url: url to be analyzed
+        :return: dict with status of submission
+        """
+        return self.post(
+            self.create_url(SUBMIT_URL),
+            {'url': url}
+        )
+
+    def submit_urls(self, urls):
+        """
+        Submit multiple urls for analysis
+        :param url: list of urls to be analyzed
+        :return: dict with status of submission
+        """
+        return self.post(
+            self.create_url(SUBMIT_URLS),
+            {'urls': urls}
+        )
+
+    def submitted_urls(self, limit=20, first_page=1, max_page=None):
+        return self.walkapi(self.create_url(SUBMITTED_URLS, page=first_page, limit=limit), max_page=max_page)
 
 
 class OTXv2Cached(OTXv2):

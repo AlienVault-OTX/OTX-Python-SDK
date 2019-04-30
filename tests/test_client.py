@@ -1,4 +1,6 @@
 import datetime
+import hashlib
+import io
 import json
 import os
 import random
@@ -32,7 +34,6 @@ def create_user(username, password, email):
     j = json.loads(r.text)
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': j['key']})
     j = r.json()
-#    print(".........................", j)
     return j['api_keys'][0]['api_key']
 
 
@@ -461,6 +462,60 @@ class TestRequests(TestOTXv2):
 
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, user_agent='foo')
         self.assertEqual(o.headers['User-Agent'], 'foo')
+
+
+class TestSubmissions(TestOTXv2):
+    rand1 = None
+    rand2 = None
+    maxDiff = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rand1 = random.randint(0, 1e12)
+        cls.rand2 = random.randint(0, 1e12)
+
+    def test_submit_file(self):
+        data = "print('{} {}')".format(self.rand1, self.rand2)
+        filename = 'test{}.py'.format(self.rand1)
+        r = self.otx.submit_file(filename=filename, file_handle=io.BytesIO(data))
+        self.assertDictEqual(r, {
+            u'result': u'added',
+            u'sha256': hashlib.sha256(data).hexdigest(),
+            u'status': u'ok',
+        })
+
+        r = self.otx.submitted_files()
+        self.assertEqual(r[0]['file_name'], filename)
+
+    def test_submit_url(self):
+        u = "http://flannelcat.rustybrooks.com/xxx/{}".format(self.rand1)
+        r = self.otx.submit_url(url=u)
+        self.assertDictEqual(r, {u'result': u'added', u'status': u'ok'})
+
+        r = self.otx.submitted_urls()
+        self.assertEquals(r[0]['url'], u)
+
+    def test_submit_urls(self):
+        u1 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand1)
+        u2 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand2)
+        r = self.otx.submit_urls(urls=[u1, u2])
+        r['added'].sort(key=lambda x: x['url'])
+        self.assertDictEqual(r, {
+            u'added': sorted([
+                {u'canononical_url': u2, u'url': u2},
+                {u'canononical_url': u1, u'url': u1},
+            ], key=lambda x: x['url']),
+            u'exists': [],
+            u'skipped': [],
+            u'updated': [],
+            u'status': u'ok',
+        })
+
+        r = self.otx.submitted_urls()
+        self.assertEquals(
+            sorted([x['url'] for x in r[:2]]),
+            sorted([u1, u2])
+        )
 
 
 class TestOTXv2Cached(unittest.TestCase):
