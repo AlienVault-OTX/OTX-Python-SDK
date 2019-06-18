@@ -29,15 +29,20 @@ SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                          # 
 PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                              # pulse meta data
 PULSE_INDICATORS = PULSE_DETAILS + "indicators"                               # pulse indicators
 PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                         # create pulse
+SUBSCRIBE_PULSE = "{}/pulses/{{}}/subscribe".format(API_V1_ROOT)              # subscribe to pulse
+UNSUBSCRIBE_PULSE = "{}/pulses/{{}}/unsubscribe".format(API_V1_ROOT)          # unsubscribe from pulse
 INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                      # indicator details
 VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)      # indicator details
 SUBSCRIBE_USER = "{}/users/{{}}/subscribe/".format(API_V1_ROOT)               # subscribe to user
-UNSUBSCRIBE_USER = "{}/users/{{}}/unsubscribe/".format(API_V1_ROOT)           # unsubscribe to user
+UNSUBSCRIBE_USER = "{}/users/{{}}/unsubscribe/".format(API_V1_ROOT)           # unsubscribe from user
+FOLLOW_USER = "{}/users/{{}}/follow".format(API_V1_ROOT)                      # follow user
+USER_INFO = "{}/users/{{}}".format(API_V1_ROOT)                               # follow user
+UNFOLLOW_USER = "{}/users/{{}}/unfollow".format(API_V1_ROOT)                  # unfollow user
 SUBMIT_FILE = "{}/indicators/submit_file".format(API_V1_ROOT)                 # submit malware sample for analysis
 SUBMITTED_FILES = "{}/indicators/submitted_files".format(API_V1_ROOT)         # status of submitted samples
 SUBMIT_URL = "{}/indicators/submit_url".format(API_V1_ROOT)                   # submit url for analysis
 SUBMIT_URLS = "{}/indicators/submit_urls".format(API_V1_ROOT)                 # submit multiple urls for analysis
-SUBMITTED_URLS = "{}/indicators/submitted_urls".format(API_V1_ROOT)          # status of submitted urls
+SUBMITTED_URLS = "{}/indicators/submitted_urls".format(API_V1_ROOT)           # status of submitted urls
 
 # logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -581,6 +586,29 @@ class OTXv2(object):
 
     def unsubscribe_from_user(self, username):
         url = UNSUBSCRIBE_USER.format(username)
+        return self.get(url)
+
+    def get_user(self, username, detailed=True):
+        url = USER_INFO.format(username)
+        if detailed:
+            url += '?detailed=1'
+
+        return self.get(url)
+
+    def follow_user(self, username):
+        url = FOLLOW_USER.format(username)
+        return self.get(url)
+
+    def unfollow_user(self, username):
+        url = UNFOLLOW_USER.format(username)
+        return self.get(url)
+
+    def subscribe_to_pulse(self, pulse_id):
+        url = SUBSCRIBE_PULSE.format(pulse_id)
+        return self.get(url)
+
+    def unsubscribe_from_pulse(self, pulse_id):
+        url = UNSUBSCRIBE_PULSE.format(pulse_id)
         return self.get(url)
 
     def submit_file(self, filename=None, file_handle=None):

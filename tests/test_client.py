@@ -52,7 +52,7 @@ class TestOTXv2(unittest.TestCase):
         self.api_key = api_key or ALIEN_API_APIKEY
         self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
 
-
+'''
 class TestSubscriptionsInvalidKey(TestOTXv2):
     """
     Confirm InvalidAPIKey class is raised for API Key failures
@@ -428,8 +428,96 @@ class TestPulseCreateInvalidKey(TestOTXv2):
                                   indicators=[],
                                   tags=[],
                                   references=[])
+'''
 
 
+class TestSubscription(unittest.TestCase):
+    user1 = "qatester-git-sub1-{}".format(rand)
+    user2 = "qatester-git-sub2-{}".format(rand)
+    otx = {}
+
+    @classmethod
+    def setUpClass(cls):
+        for u in [cls.user1, cls.user2]:
+            cls.otx[u] = OTXv2(create_user(u, "password", u + "@aveng.us"), server=ALIEN_DEV_SERVER)
+
+    @classmethod
+    def tearDownClass(cls):
+        for u in [cls.user1, cls.user2]:
+            delete_user(u)
+
+    def test_user_subscription(self):
+        check_cols = ['username', 'request_user_is_me', 'request_user_is_following', 'request_user_is_subscribed']
+        before_u1 = {k: v for k, v in self.otx[self.user1].get_user(self.user1).items() if k in check_cols}
+        before_u2 = {k: v for k, v in self.otx[self.user1].get_user(self.user2).items() if k in check_cols}
+        self.assertDictEqual(before_u1, {
+            u"username": self.user1, u"request_user_is_me": True, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+        self.assertDictEqual(before_u2, {
+            u"username": self.user2, u"request_user_is_me": False, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+
+        # sub to u2
+        self.otx[self.user1].subscribe_to_user(self.user2)
+        after_u1 = {k: v for k, v in self.otx[self.user1].get_user(self.user1).items() if k in check_cols}
+        after_u2 = {k: v for k, v in self.otx[self.user1].get_user(self.user2).items() if k in check_cols}
+        self.assertDictEqual(after_u1, {
+            u"username": self.user1, u"request_user_is_me": True, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+        self.assertDictEqual(after_u2, {
+            u"username": self.user2, u"request_user_is_me": False, u"request_user_is_subscribed": True, u"request_user_is_following": False,
+        })
+
+        # follow u2
+        self.otx[self.user1].follow_user(self.user2)
+        after2_u1 = {k: v for k, v in self.otx[self.user1].get_user(self.user1).items() if k in check_cols}
+        after2_u2 = {k: v for k, v in self.otx[self.user1].get_user(self.user2).items() if k in check_cols}
+        self.assertDictEqual(after2_u1, {
+            u"username": self.user1, u"request_user_is_me": True, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+        self.assertDictEqual(after2_u2, {
+            u"username": self.user2, u"request_user_is_me": False, u"request_user_is_subscribed": True, u"request_user_is_following": True,
+        })
+
+        # unsub u2
+        self.otx[self.user1].unsubscribe_from_user(self.user2)
+        after3_u1 = {k: v for k, v in self.otx[self.user1].get_user(self.user1).items() if k in check_cols}
+        after3_u2 = {k: v for k, v in self.otx[self.user1].get_user(self.user2).items() if k in check_cols}
+        self.assertDictEqual(after3_u1, {
+            u"username": self.user1, u"request_user_is_me": True, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+        self.assertDictEqual(after3_u2, {
+            u"username": self.user2, u"request_user_is_me": False, u"request_user_is_subscribed": False, u"request_user_is_following": True,
+        })
+
+        # unfollow u2
+        self.otx[self.user1].unfollow_user(self.user2)
+        after4_u1 = {k: v for k, v in self.otx[self.user1].get_user(self.user1).items() if k in check_cols}
+        after4_u2 = {k: v for k, v in self.otx[self.user1].get_user(self.user2).items() if k in check_cols}
+        self.assertDictEqual(after4_u1, {
+            u"username": self.user1, u"request_user_is_me": True, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+        self.assertDictEqual(after4_u2, {
+            u"username": self.user2, u"request_user_is_me": False, u"request_user_is_subscribed": False, u"request_user_is_following": False,
+        })
+
+    def test_pulse_subscription(self):
+        indicator_list = [{'indicator': "one.com", 'type': 'domain'}]
+        name = "subscription test"
+        response = self.otx[self.user1].create_pulse(name=name, public=False, indicators=indicator_list)
+        pulse_id = response['id']
+
+        before = self.otx[self.user1].get_pulse_details(pulse_id)
+        self.assertFalse(before['is_subscribing'])
+        self.otx[self.user1].subscribe_to_pulse(pulse_id)
+        after = self.otx[self.user1].get_pulse_details(pulse_id)
+        self.assertTrue(after['is_subscribing'])
+        self.otx[self.user1].unsubscribe_from_pulse(pulse_id)
+        after2 = self.otx[self.user1].get_pulse_details(pulse_id)
+        self.assertFalse(after2['is_subscribing'])
+
+
+'''
 class TestValidateIndicator(TestOTXv2):
     def test_validate_valid_domain(self):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
@@ -657,7 +745,7 @@ class TestOTXv2Cached(unittest.TestCase):
         self.assertIsNotNone(pulse.get('tags', None))
         self.assertIsNotNone(pulse.get('references', None))
         self.assertIsNotNone(res.get('exact_match'))
-
+'''
 
 if __name__ == '__main__':
     username = "qatester-git-{}".format(rand)
