@@ -1,4 +1,6 @@
-# This example:
+#!/usr/bin/env python
+
+#  This example:
 # 1) Takes a MISP Json representing malicious activity, eg; those at https://www.circl.lu/doc/misp/feed-osint/ then
 # 2) Creates an OTX pulse representing that data
 

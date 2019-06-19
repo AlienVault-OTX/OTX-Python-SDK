@@ -1,13 +1,16 @@
+#!/usr/bin/env python
+
 # Very Simple CLI example to get indicator details from Alienvault OTX
 
 from OTXv2 import OTXv2
 import IndicatorTypes
 import argparse
+import os
 
-# Your API key
-API_KEY = ''
-OTX_SERVER = 'https://otx.alienvault.com/'
-otx = OTXv2(API_KEY, server=OTX_SERVER)
+# store OTX API key in environment variable OTX_API_KEY
+API_KEY = os.getenv("OTX_API_KEY")
+
+otx = OTXv2(API_KEY)
 
 parser = argparse.ArgumentParser(description='OTX CLI Example')
 parser.add_argument('-i', '--ip', help='IP eg; 4.4.4.4', required=False)
@@ -46,4 +49,4 @@ if args["pulse"]:
     print (str(result.get('results')))
 
 if args["subscribed"]:
-    print (str(otx.getall(max_page=3, limit=5)))
+    print (str(otx.getall(max_items=3, limit=5)))

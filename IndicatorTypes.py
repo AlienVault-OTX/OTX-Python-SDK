@@ -118,6 +118,14 @@ CVE = IndicatorTypes(
     sections=["general"],
     slug="cve"
 )
+YARA = IndicatorTypes(
+    name="YARA",
+    description="YARA rule",
+    api_support=True,
+    sections=['general'],
+    slug='YARA',
+)
+
 
 # all_types list of supported IOC types for pulse indicators
 all_types = [

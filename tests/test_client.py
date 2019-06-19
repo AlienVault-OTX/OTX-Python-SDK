@@ -52,7 +52,6 @@ class TestOTXv2(unittest.TestCase):
         self.api_key = api_key or ALIEN_API_APIKEY
         self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
 
-'''
 class TestSubscriptionsInvalidKey(TestOTXv2):
     """
     Confirm InvalidAPIKey class is raised for API Key failures
@@ -428,7 +427,6 @@ class TestPulseCreateInvalidKey(TestOTXv2):
                                   indicators=[],
                                   tags=[],
                                   references=[])
-'''
 
 
 class TestSubscription(unittest.TestCase):
@@ -517,7 +515,6 @@ class TestSubscription(unittest.TestCase):
         self.assertFalse(after2['is_subscribing'])
 
 
-'''
 class TestValidateIndicator(TestOTXv2):
     def test_validate_valid_domain(self):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
@@ -594,15 +591,13 @@ class TestSubmissions(TestOTXv2):
         u1 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand1)
         u2 = "http://flannelcat.rustybrooks.com/yyy/{}".format(self.rand2)
         r = self.otx.submit_urls(urls=[u1, u2])
-        r['added'].sort(key=lambda x: x['url'])
+        r['added'].sort()
         self.assertDictEqual(r, {
-            u'added': sorted([
-                {u'canononical_url': u2, u'url': u2},
-                {u'canononical_url': u1, u'url': u1},
-            ], key=lambda x: x['url']),
+            u'added': sorted([u2, u1]),
             u'exists': [],
             u'skipped': [],
             u'updated': [],
+            u'invalid': [],
             u'status': u'ok',
         })
 
@@ -745,7 +740,7 @@ class TestOTXv2Cached(unittest.TestCase):
         self.assertIsNotNone(pulse.get('tags', None))
         self.assertIsNotNone(pulse.get('references', None))
         self.assertIsNotNone(res.get('exact_match'))
-'''
+
 
 if __name__ == '__main__':
     username = "qatester-git-{}".format(rand)
