@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name='OTXv2',
-    version='1.5',
+    version='1.5.2',
     description='AlienVault OTX API',
     author='AlienVault Team',
     author_email='otx@alienvault.com',
