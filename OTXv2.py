@@ -290,7 +290,7 @@ class OTXv2(object):
         )
         return indicator_url
 
-    def walkapi_iter(self, url, max_page=None, max_items=None):
+    def walkapi_iter(self, url, max_page=None, max_items=None, method='GET', body=None):
         next_page_url = url
         count = 0
         item_count = 0
@@ -299,7 +299,13 @@ class OTXv2(object):
             if max_page and count > max_page:
                 break
 
-            data = self.get(next_page_url)
+            if method == 'GET':
+                data = self.get(next_page_url)
+            elif method == 'POST':
+                data = self.post(next_page_url, body=body)
+            else:
+                raise Exception("Unsupported method type: {}".format(method))
+
             for el in data['results']:
                 item_count += 1
                 if max_items and item_count > max_items:
@@ -309,11 +315,11 @@ class OTXv2(object):
 
             next_page_url = data["next"]
 
-    def walkapi(self, url, iter=False, max_page=None, max_items=None):
+    def walkapi(self, url, iter=False, max_page=None, max_items=None, method='GET', body=None):
         if iter:
-            return self.walkapi_iter(url, max_page=max_page, max_items=max_items)
+            return self.walkapi_iter(url, max_page=max_page, max_items=max_items, method=method, body=body)
         else:
-            return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items))
+            return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items, method=method, body=body))
 
     def getall(self, modified_since=None, author_name=None, limit=20, max_page=None, max_items=None, iter=False):
         """
@@ -632,12 +638,22 @@ class OTXv2(object):
             if do_close:
                 file_handle.close()
 
-    def submitted_files(self, limit=20, first_page=1, max_page=None):
+    def submitted_files(self, hashes=None, limit=20, first_page=1, max_page=None):
         """
         Get status of submitted files
+        :param hashes: list of sha256 hashes to check the results of (optional)
         :return: list of dicts, each dict describing the status of one file
         """
-        return self.walkapi(self.create_url(SUBMITTED_FILES, page=first_page, limit=limit), max_page=max_page)
+        return self.walkapi(
+            self.create_url(SUBMITTED_FILES),
+            max_page=max_page,
+            method='POST',
+            body={
+                'hashes': hashes,
+                'page': first_page,
+                'limit': limit,
+            },
+        )
 
     def submit_url(self, url):
         """
