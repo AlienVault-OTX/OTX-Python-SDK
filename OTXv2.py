@@ -29,6 +29,8 @@ SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                          # 
 PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                              # pulse meta data
 PULSE_INDICATORS = PULSE_DETAILS + "indicators"                               # pulse indicators
 PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                         # create pulse
+USER_PULSES = "{}/pulses/user/{{}}".format(API_V1_ROOT)                       # pulse feed for a user
+MY_PULSES = "{}/pulses/my".format(API_V1_ROOT)                       # pulse feed for a user
 SUBSCRIBE_PULSE = "{}/pulses/{{}}/subscribe".format(API_V1_ROOT)              # subscribe to pulse
 UNSUBSCRIBE_PULSE = "{}/pulses/{{}}/unsubscribe".format(API_V1_ROOT)          # unsubscribe from pulse
 INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                      # indicator details
@@ -288,7 +290,7 @@ class OTXv2(object):
         )
         return indicator_url
 
-    def walkapi_iter(self, url, max_page=None, max_items=None):
+    def walkapi_iter(self, url, max_page=None, max_items=None, method='GET', body=None):
         next_page_url = url
         count = 0
         item_count = 0
@@ -297,7 +299,13 @@ class OTXv2(object):
             if max_page and count > max_page:
                 break
 
-            data = self.get(next_page_url)
+            if method == 'GET':
+                data = self.get(next_page_url)
+            elif method == 'POST':
+                data = self.post(next_page_url, body=body)
+            else:
+                raise Exception("Unsupported method type: {}".format(method))
+
             for el in data['results']:
                 item_count += 1
                 if max_items and item_count > max_items:
@@ -307,11 +315,11 @@ class OTXv2(object):
 
             next_page_url = data["next"]
 
-    def walkapi(self, url, iter=False, max_page=None, max_items=None):
+    def walkapi(self, url, iter=False, max_page=None, max_items=None, method='GET', body=None):
         if iter:
-            return self.walkapi_iter(url, max_page=max_page, max_items=max_items)
+            return self.walkapi_iter(url, max_page=max_page, max_items=max_items, method=method, body=body)
         else:
-            return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items))
+            return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items, method=method, body=body))
 
     def getall(self, modified_since=None, author_name=None, limit=20, max_page=None, max_items=None, iter=False):
         """
@@ -412,7 +420,7 @@ class OTXv2(object):
         resource.update(additional_fields)
         return resource
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None):
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
@@ -420,7 +428,7 @@ class OTXv2(object):
         :return: yields the indicator object for use
         """
         name_list = IndicatorTypes.to_name_list(indicator_types)
-        for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page):
+        for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
             for indicator in pulse["indicators"]:
                 if indicator["type"] in name_list:
                     yield indicator
@@ -454,7 +462,7 @@ class OTXv2(object):
         meta_data = self.get(pulse_url)
         return meta_data
 
-    def get_pulse_indicators(self, pulse_id, limit=20):
+    def get_pulse_indicators(self, pulse_id, limit=100):
         """
         For a given pulse_id, get list of indicators (IOCs)
         :param pulse_id: Object ID specify which pulse to get indicators from
@@ -464,8 +472,7 @@ class OTXv2(object):
         if not isinstance(pulse_id, string_types) or not re.match(r"^[0-9a-zA-Z]{24}$", pulse_id):
            raise BadRequest("pulse_id should be a 24 character hex string")
 
-        url = PULSE_DETAILS + str(pulse_id) + "/indicators"
-        url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit)        
+        url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit)
         return self.walkapi(url)
 
     def edit_pulse(self, pulse_id, body):
@@ -488,32 +495,13 @@ class OTXv2(object):
         :param pulse_id: The pulse you are replacing the indicators with
         :param new_indicators: The set of new indicators
         :return: Return the new pulse
-
         """
-        current_indicators = self.get_pulse_indicators(pulse_id)
-        current_indicator_values = []
-        current_indicator_indicators = []
 
-        for indicator in current_indicators:
-            current_indicator_values.append(indicator["indicator"])
-            current_indicator_indicators.append(indicator)
-
-        new_indicator_values = []
-        indicators_to_add = []
-
-        for indicator in new_indicators:
-            new_indicator_value = indicator["indicator"]
-            new_indicator_values.append(new_indicator_value)
-            if new_indicator_value not in current_indicator_values:
-                indicators_to_add.append(indicator)
-
-        body = {
+        response = self.edit_pulse(pulse_id, body={
             'indicators': {
-                'add': indicators_to_add
+                'add': new_indicators
             }
-        }
-
-        response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
+        })
         return response
 
     def replace_pulse_indicators(self, pulse_id, new_indicators):
@@ -604,6 +592,12 @@ class OTXv2(object):
 
         return self.get(url)
 
+    def get_user_pulses(self, username, query=None, max_items=200):
+        return self.walkapi(self.create_url(USER_PULSES.format(username), limit=50, q=query), max_items=max_items)
+
+    def get_my_pulses(self, query=None, max_items=200):
+        return self.walkapi(self.create_url(MY_PULSES, limit=50, q=query), max_items=max_items)
+
     def follow_user(self, username):
         url = FOLLOW_USER.format(username)
         return self.get(url)
@@ -653,14 +647,21 @@ class OTXv2(object):
             if do_close:
                 file_handle.close()
 
-    def submitted_files(self, limit=50, first_page=1, max_page=None, max_items=None):
+    def submitted_files(self, limit=50, hashes=None, first_page=1, max_page=None, max_items=None):
         """
         Get status of submitted files
+        :param hashes: list of sha256 hashes to check the results of (optional)
         :return: list of dicts, each dict describing the status of one file
         """
         return self.walkapi(
-            self.create_url(SUBMITTED_FILES, page=first_page, limit=limit),
-            max_page=max_page, max_items=max_items
+            self.create_url(SUBMITTED_FILES),
+            max_page=max_page,
+            method='POST',
+            body={
+                'hashes': hashes,
+                'page': first_page,
+                'limit': limit,
+            },
         )
 
     def submit_url(self, url):

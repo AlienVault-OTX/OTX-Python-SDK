@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import IndicatorTypes
 
 # Get a nested key from a dict, without having to do loads of ifs
