@@ -802,7 +802,7 @@ class OTXv2Cached(OTXv2):
         if e['action'] == 'subscribe':
             self.save_pulse(self.get_pulse_details(e['object_id']))
         elif e['action'] == 'unsubscribe':
-            self.delete_pulse(e['object_id'])
+            self.delete_pulse_file(e['object_id'])
         else:
             logger.error("Unknown action in pulse event: {}", e)
 
@@ -812,7 +812,7 @@ class OTXv2Cached(OTXv2):
         elif e['action'] == 'unsubscribe':
             to_delete = self.find_pulses(author_names=[e['object_id']])
             for pid in to_delete:
-                self.delete_pulse(pid)
+                self.delete_pulse_file(pid)
         else:
             logger.error("Unknown action in user event: {}", e)
 
@@ -835,8 +835,8 @@ class OTXv2Cached(OTXv2):
         with open(self.pulse_file(p['id'], create=True), 'w') as f:
             json.dump(p, f, indent=2)
 
-    def delete_pulse(self, pulse_id):
-        logger.info("Deleting pulse (id=%r)", pulse_id)
+    def delete_pulse_file(self, pulse_id):
+        logger.info("Deleting pulse cache file (id=%r)", pulse_id)
         pulse_file = self.pulse_file(pulse_id, create=False)
         if os.path.exists(pulse_file):
             os.unlink(pulse_file)
