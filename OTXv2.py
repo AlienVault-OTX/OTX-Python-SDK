@@ -45,6 +45,7 @@ SUBMITTED_FILES = "{}/indicators/submitted_files".format(API_V1_ROOT)         # 
 SUBMIT_URL = "{}/indicators/submit_url".format(API_V1_ROOT)                   # submit url for analysis
 SUBMIT_URLS = "{}/indicators/submit_urls".format(API_V1_ROOT)                 # submit multiple urls for analysis
 SUBMITTED_URLS = "{}/indicators/submitted_urls".format(API_V1_ROOT)           # status of submitted urls
+DELETE_PULSE = "{}/pulses/{{}}/delete".format(API_V1_ROOT)                   # Delete a pulse
 
 # logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -461,6 +462,17 @@ class OTXv2(object):
         pulse_url = self.create_url(PULSE_DETAILS + str(pulse_id))
         meta_data = self.get(pulse_url)
         return meta_data
+
+    def delete_pulse(self, pulse_id):
+        """
+        For a given pulse_id, delete it
+        :param pulse_:od object id for pulse
+
+        """
+        if not isinstance(pulse_id, string_types) or not re.match(r"^[0-9a-zA-Z]{24}$", pulse_id):
+            raise BadRequest("pulse_id should be a 24 character hex string")
+        pulse_url = self.create_url(DELETE_PULSE.format(pulse_id))
+        return self.get(pulse_url)
 
     def get_pulse_indicators(self, pulse_id, limit=100):
         """
