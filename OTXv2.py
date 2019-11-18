@@ -322,7 +322,7 @@ class OTXv2(object):
         else:
             return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items, method=method, body=body))
 
-    def getall(self, modified_since=None, author_name=None, limit=20, max_page=None, max_items=None, iter=False):
+    def getall(self, modified_since=None, author_name=None, group_id=None, limit=20, max_page=None, max_items=None, iter=False):
         """
         Get all pulses user is subscribed to.
         :param modified_since: datetime object representing earliest date you want returned in results
@@ -338,13 +338,15 @@ class OTXv2(object):
             args['modified_since'] = modified_since
         if author_name is not None:
             args['author_name'] = author_name
+        if group_id is not None:
+            args['group_id'] = group_id
 
         return self.walkapi(
             self.create_url(SUBSCRIBED, **args), iter=iter,
             max_page=max_page, max_items=max_items
         )
 
-    def getall_iter(self, author_name=None, modified_since=None, limit=20, max_page=None, max_items=None):
+    def getall_iter(self, author_name=None, group_id=None, modified_since=None, limit=20, max_page=None, max_items=None):
         """
         Get all pulses user is subscribed to, yield results.
         :param modified_since: datetime object representing earliest date you want returned in results
@@ -354,7 +356,7 @@ class OTXv2(object):
         :return: the consolidated set of pulses for the user
         """
         return self.getall(
-            modified_since=modified_since, author_name=author_name, limit=limit,
+            modified_since=modified_since, author_name=author_name, group_id=group_id, limit=limit,
             max_page=max_page, max_items=max_items, iter=True,
         )
 
@@ -421,7 +423,7 @@ class OTXv2(object):
         resource.update(additional_fields)
         return resource
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
+    def get_all_indicators(self, author_name=None, group_id=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
@@ -429,7 +431,7 @@ class OTXv2(object):
         :return: yields the indicator object for use
         """
         name_list = IndicatorTypes.to_name_list(indicator_types)
-        for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
+        for pulse in self.getall_iter(author_name=author_name, group_id=group_id, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
             for indicator in pulse["indicators"]:
                 if indicator["type"] in name_list:
                     yield indicator
@@ -752,6 +754,7 @@ class OTXv2Cached(OTXv2):
                 val = val.isoformat() if val else None
             data[k] = val
 
+        logging.info("Saving data - %r", data)
         with open(datfile, 'w') as f:
             json.dump(data, f, indent=2)
 
@@ -774,10 +777,22 @@ class OTXv2Cached(OTXv2):
         self.last_subscription_fetch = max_date
         self.save_data()
 
-    def initial_fetch(self, author_name=None):
+    def validate(self):
+        return True
+
+        pulse_files = self.find_pulses(return_type='filename')
+        for fname in pulse_files:
+            pid = os.path.splitext(fname)[0]
+
+            pulse = self.load_pulse(pulse_id=pid)
+            if not pulse:
+                logger.warn("Invalid pulse file: %r", fname)
+
+    def initial_fetch(self, author_name=None, group_id=None):
         logger.info("Performing initial fetch (author_name=%r)", author_name)
         for p in super(OTXv2Cached, self).getall(
-            author_name=author_name, modified_since=self.now() - self.max_age if self.max_age else None, iter=True, limit=100
+            author_name=author_name, group_id=group_id,
+            modified_since=self.now() - self.max_age if self.max_age else None, iter=True, limit=100
         ):
             self.save_pulse(p)
 
@@ -817,7 +832,14 @@ class OTXv2Cached(OTXv2):
             logger.error("Unknown action in user event: {}", e)
 
     def apply_group_event(self, e):
-        pass
+        if e['action'] == 'add_pulse':
+            pass
+        elif e['action'] == 'remove_pulse':
+            pass
+        elif e['action'] == 'join':
+            self.initial_fetch(group_id=e['object_id'])
+        elif e['action'] == 'leave':
+            pass
 
     def pulse_cache_dir(self, pulse_id, create=False):
         pulse_dir = os.path.join(self.cache_dir, pulse_id[-1], pulse_id[-2])
@@ -844,13 +866,14 @@ class OTXv2Cached(OTXv2):
     def load_pulse(self, pulse_id):
         pulse_file = self.pulse_file(pulse_id, create=False)
         if not os.path.exists(pulse_file):
+            logger.warn("no pulse file: %r", pulse_file)
             return None
         with open(pulse_file) as f:
             p = json.load(f)
 
         return p
 
-    def find_pulses(self, return_type='pulse_id', author_names=None, modified_since=None):
+    def find_pulses(self, return_type='pulse_id', author_names=None, group_ids=None, modified_since=None):
         author_names = set([x.lower() for x in author_names]) if author_names else None
         modified_since = self.fix_date(modified_since)
 
@@ -860,6 +883,13 @@ class OTXv2Cached(OTXv2):
                     continue
 
                 pulse_id = os.path.splitext(fname)[0]
+                if return_type == 'pulse_id':
+                    yield pulse_id
+                    continue
+                elif return_type == 'filename':
+                    yield os.path.join(dirName, fname)
+                    continue
+
                 pulse = None
                 if author_names or modified_since or return_type == 'pulse':
                     pulse = self.load_pulse(pulse_id)
@@ -872,12 +902,10 @@ class OTXv2Cached(OTXv2):
                     if self.fix_date(pulse['modified']) < modified_since:
                         continue
 
-                if return_type == 'pulse_id':
-                    yield pulse_id
-                elif return_type == 'pulse':
+                if return_type == 'pulse':
                     yield pulse
                 else:
-                    raise Exception("return_type should be one of ['pulse_id', 'pulse']")
+                    raise Exception("return_type should be one of ['pulse_id', 'pulse', 'filename]")
 
     @classmethod
     def fix_date(cls, dtstr):
@@ -895,17 +923,18 @@ class OTXv2Cached(OTXv2):
         return dt
 
     # FIXME this is unordered...
-    def getall(self, modified_since=None, author_name=None, iter=False, limit=None, max_page=None, max_items=None):
+    def getall(self, modified_since=None, author_name=None, group_id=None, iter=False, limit=None, max_page=None, max_items=None):
         if iter:
-            return self.getall_iter(modified_since=modified_since, author_name=author_name, limit=limit, max_page=max_page, max_items=max_items)
+            return self.getall_iter(modified_since=modified_since, author_name=author_name, group_id=group_id, limit=limit, max_page=max_page, max_items=max_items)
         else:
-            return list(self.getall_iter(modified_since=modified_since, author_name=author_name, limit=limit, max_page=max_page, max_items=max_items))
+            return list(self.getall_iter(modified_since=modified_since, author_name=author_name, group_id=group_id, limit=limit, max_page=max_page, max_items=max_items))
 
-    def getall_iter(self, modified_since=None, author_name=None, iter=False, limit=20, max_page=None, max_items=None):
+    def getall_iter(self, modified_since=None, author_name=None, group_id=None, iter=False, limit=20, max_page=None, max_items=None):
         count = 0
         for p in self.find_pulses(
             modified_since=modified_since,
             author_names=[author_name] if author_name else None,
+            group_ids=[group_id] if group_id else None,
             return_type='pulse',
         ):
             yield p
@@ -923,9 +952,9 @@ class OTXv2Cached(OTXv2):
     def getsince_iter(self, timestamp, limit=20, max_page=None, max_items=None):
         return self.getall(modified_since=timestamp, iter=True, limit=limit, max_page=max_page, max_items=max_items)
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
+    def get_all_indicators(self, author_name=None, group_id=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
         name_list = IndicatorTypes.to_name_list(indicator_types)
-        for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
+        for pulse in self.getall_iter(author_name=author_name, group_id=group_id, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
             for indicator in pulse["indicators"]:
                 if indicator["type"] in name_list:
                     yield indicator
