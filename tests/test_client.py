@@ -24,21 +24,19 @@ ALIEN_API_APIKEY = ""
 rand = random.randint(0, 1e9)
 
 
-def create_user(username, password, email):
+def create_user(username, password, email, group_ids=None):
     """
     Create a user, and get the API key
     """
-    print("creating user {}".format(username))
+    print("creating user {} (groups={})".format(username, group_ids))
     requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/setup/', json={"users": [
-        {"username": username, "password": password, "email": email, "group_ids": [64, 51, 2931]}
+        {"username": username, "password": password, "email": email, "group_ids": group_ids}
     ]})
     r = requests.post(ALIEN_DEV_SERVER + 'auth/login', json={"username": username, "password": password})
     j = json.loads(r.text)
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': j['key']})
     j = r.json()
-    API_KEY = j['api_keys'][0]['api_key']
-
-    return API_KEY
+    return j['api_keys'][0]['api_key']
 
 
 def delete_user(username):
@@ -53,10 +51,11 @@ class TestOTXv2(unittest.TestCase):
     Base class configure API Key to use on a per test basis.
     """
     def setUp(self, api_key=''):
+        self.maxDiff = None
         self.api_key = api_key or ALIEN_API_APIKEY
         self.otx = OTXv2(self.api_key, server=ALIEN_DEV_SERVER)
 
-'''
+
 class TestSubscriptionsInvalidKey(TestOTXv2):
     """
     Confirm InvalidAPIKey class is raised for API Key failures
@@ -278,10 +277,20 @@ class TestIndicatorDetails(TestOTXv2):
         full_details = self.otx.get_indicator_details_full(IndicatorTypes.EMAIL, "me@rustybrooks.com")
         self.assertTrue(sorted(full_details.keys()) == sorted(IndicatorTypes.EMAIL.sections))
         # pprint.pprint(full_details)
-'''
+
 
 class TestPulseCreate(TestOTXv2):
-    '''
+    user1 = "qatester-git-pulse-{}".format(rand)
+    otx = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.otx2 = OTXv2(create_user(cls.user1, "password", cls.user1 + "@aveng.us", group_ids=[51, 64, 2931]), server=ALIEN_DEV_SERVER)
+
+    @classmethod
+    def tearDownClass(cls):
+        delete_user(cls.user1)
+    
     def test_create_pulse_simple(self):
         name = "Pyclient-simple-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         # print("test_create_pulse_simple submitting pulse: " + name)
@@ -418,14 +427,14 @@ class TestPulseCreate(TestOTXv2):
             self.assertTrue(response.get('TLP', '') == tlp)
             self.assertFalse(response.get('public'))
         return
-    '''
 
     def test_create_pulse_groups(self):
         """
         Test: pulse with different sets of group ids
-        Test user needs to be a member of the groups used in this test: 64, 51
+        Test user needs to be a member of the groups used in this test: 64, 51 and 2931
         Additionall we will use the test groups 1 and 2, that it is NOT a member of
         """
+
         charset = string.ascii_letters
         indicator_list = [
             {'indicator': generate_rand_string(10, charset=charset) + ".com", 'type': IndicatorTypes.DOMAIN.name, 'description': 'evil domain (unittests)'},
@@ -436,25 +445,47 @@ class TestPulseCreate(TestOTXv2):
             ([], []),
             (None, []),
             ([1, 51], 'error'),  # Not a member of group 1
-            # ([51, 2931], [51, 2931]),
-#            ([64, 51, 1], 'error'),
-#            ([1], 'error'),
+            ([64, 51], 'error'),  # we're in both groups but can't post to 64
+            ([1], 'error'),
+            ([51], [51]),
+            ([51, 2931], [51, 2931]),
         ]:
             name = "Pyclient-tlp-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
-            print(groups, expected)
             if expected == 'error':
                 with self.assertRaises(BadRequest):
-                    self.otx.create_pulse(name=name, indicators=indicator_list, group_ids=groups)
+                    self.otx2.create_pulse(name=name, indicators=indicator_list, group_ids=groups)
             else:
-                response = self.otx.create_pulse(name=name, indicators=indicator_list, group_ids=groups)
+                response = self.otx2.create_pulse(name=name, indicators=indicator_list, group_ids=groups)
 
                 self.assertEqual(response.get('name', ''), name)
                 self.assertEqual(response.get('group_ids'), expected)
 
         return
 
+    def test_more_params(self):
+        response = self.otx.create_pulse(
+            name="Pyclient-params-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower(),
+            indicators= [
+                {'indicator': generate_rand_string(10) + ".com", 'type': IndicatorTypes.DOMAIN.name, 'description': 'evil domain (unittests)'},
+            ],   
+            industries=["Industry1", "Industry2"],
+            targeted_countries=["Afghanistan", "Anguilla"],
+            malware_families=["Backdoor:Linux/Netbus", "Backdoor:Linux/Cyrax"],
+            attack_ids=["T1000", "T1486"],
+            adversary="APT 1",
+        )
 
-'''
+        check_fields = ['industries', 'targeted_countries', 'malware_families', 'attack_ids', 'adversary', 'group_ids']
+        self.assertEqual({k: response[k] for k in check_fields}, {
+            u'adversary': u'APT 1',
+            u'attack_ids': [u'T1000', u'T1486'],
+            u'group_ids': [],
+            u'industries': [u'Industry1', u'Industry2'],
+            u'malware_families': [u'Backdoor:Linux/Netbus', u'Backdoor:Linux/Cyrax'],
+            u'targeted_countries': [u'Afghanistan', u'Anguilla'],
+         })
+
+
 class TestPulseCreateInvalidKey(TestOTXv2):
     def setUp(self, **kwargs):
         super(TestPulseCreateInvalidKey, self).setUp(**{'api_key': "ALIEN_API_APIKEY"})
@@ -781,7 +812,7 @@ class TestOTXv2Cached(unittest.TestCase):
         self.assertIsNotNone(pulse.get('tags', None))
         self.assertIsNotNone(pulse.get('references', None))
         self.assertIsNotNone(res.get('exact_match'))
-'''
+
 
 if __name__ == '__main__':
     username = "qatester-git-{}".format(rand)

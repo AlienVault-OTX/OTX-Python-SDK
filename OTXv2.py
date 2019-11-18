@@ -95,7 +95,7 @@ class OTXv2(object):
         self.request_session = None
         self.headers = {
             'X-OTX-API-KEY': self.key,
-            'User-Agent': user_agent or 'OTX Python {}/1.5.3'.format(project),
+            'User-Agent': user_agent or 'OTX Python {}/1.5.4'.format(project),
             'Content-Type': 'application/json'
         }
 
@@ -204,6 +204,12 @@ class OTXv2(object):
             :param references(list of strings, preferably URLs) external references for this threat
             :param indicators(list of objects) IOCs to include in pulse
             :param group_ids(list of integers) Group IDs for groups pulse should be added to.  You must be a member of the group and able to add pulses to the group
+            :param adversary(string) Name of adversary related to pulse
+            :param targeted_countries(list of strings, or list of ints) List of affected or related countries.  Can use official country name, or better yet the 3-character ISO 3166 country codes
+            :param industries(list of strings) list of industries related to pulse
+            :param malware_families(list of strings) list of malware families related to pulse
+            :param attack_ids(list of strings) list of ATT&CK ids related to pulse
+            
         :return: request body response
         :raises BadRequest (400) On failure, BadRequest will be raised containing the invalid fields.
 
@@ -225,8 +231,14 @@ class OTXv2(object):
             'tags': kwargs.get('tags', []),
             'references': kwargs.get('references', []),
             'indicators': kwargs.get('indicators', []),
-            'groups': kwargs.get('group_ids', []),
+            'group_ids': kwargs.get('group_ids', []),  
+            'adversary': kwargs.get('adversary'),
+            'targeted_countries': kwargs.get('targeted_countries', []),
+            'industries': kwargs.get('industries', []),
+            'malware_families': kwargs.get('malware_families', []),
+            'attack_ids': kwargs.get('attack_ids', [])
         }
+
         # name is required.  Public is too but will be set True if not specified.
         if not body.get('name'):
             raise ValueError('Name required.  Please resubmit your pulse with a name (string, 5-64 chars).')
