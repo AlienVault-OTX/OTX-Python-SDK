@@ -203,6 +203,7 @@ class OTXv2(object):
             :param tags(list of strings) short keywords to associate with your pulse
             :param references(list of strings, preferably URLs) external references for this threat
             :param indicators(list of objects) IOCs to include in pulse
+            :param group_ids(list of integers) Group IDs for groups pulse should be added to.  You must be a member of the group and able to add pulses to the group
         :return: request body response
         :raises BadRequest (400) On failure, BadRequest will be raised containing the invalid fields.
 
@@ -223,7 +224,8 @@ class OTXv2(object):
             'TLP': kwargs.get('TLP', kwargs.get('tlp', 'green')),
             'tags': kwargs.get('tags', []),
             'references': kwargs.get('references', []),
-            'indicators': kwargs.get('indicators', [])
+            'indicators': kwargs.get('indicators', []),
+            'groups': kwargs.get('group_ids', []),
         }
         # name is required.  Public is too but will be set True if not specified.
         if not body.get('name'):

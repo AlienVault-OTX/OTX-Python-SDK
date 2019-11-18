@@ -89,6 +89,7 @@ ENV/
 .ropeproject
 
 # IntelliJ cruft
-.idea/*
+.idea/**
+.vscode/**
 
 build
