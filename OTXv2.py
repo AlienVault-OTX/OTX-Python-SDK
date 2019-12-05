@@ -95,7 +95,7 @@ class OTXv2(object):
         self.request_session = None
         self.headers = {
             'X-OTX-API-KEY': self.key,
-            'User-Agent': user_agent or 'OTX Python {}/1.5.4'.format(project),
+            'User-Agent': user_agent or 'OTX Python {}/1.5.5'.format(project),
             'Content-Type': 'application/json'
         }
 
