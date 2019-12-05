@@ -440,6 +440,9 @@ class OTXv2(object):
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
         :param indicator_types: IndicatorTypes to return
+        :param author_name limit indicators to ones found in pulses authored by author_name
+        :param modified_since limit indicators to ones found in pulses modified since modified_since
+        :include_inactive include indicators that are set to inactive (due to expiration typically)
         :return: yields the indicator object for use
         """
         name_list = IndicatorTypes.to_name_list(indicator_types)
@@ -538,37 +541,24 @@ class OTXv2(object):
         :return: Return the new pulse
 
         """
-        current_indicators = self.get_pulse_indicators(pulse_id)
-        current_indicator_values = []
-        current_indicator_indicators = []
+        expire_date = datetime.datetime.utcnow().isoformat()
+        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id)}
 
-        for indicator in current_indicators:
-            current_indicator_values.append(indicator["indicator"])
-            current_indicator_indicators.append(indicator)
-
-        new_indicator_values = []
         indicators_to_add = []
+        indicators_to_amend = []
 
         for indicator in new_indicators:
-            new_indicator_value = indicator["indicator"]
-            new_indicator_values.append(new_indicator_value)
-            if new_indicator_value not in current_indicator_values:
+            if indicator['indicator'] not in current_indicators:
                 indicators_to_add.append(indicator)
-
-        indicators_to_amend = []
-        for indicator in current_indicator_indicators:
-            if indicator["indicator"] not in new_indicator_values:
-                yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-                indicators_to_amend.append({"id": indicator["id"], "expiration": yesterday.strftime("%Y-%m-%d"), "title": "Expired"})
             else:
-                # Need this else statement, to cover indicators that appear, then go, then re-appear
-                indicators_to_amend.append({"id": indicator["id"], "expiration": "", "title": "", "is_active": 1})
-        body = {
-            'indicators': {
-                'add': indicators_to_add,
-                'edit': indicators_to_amend
-            }
-        }
+                this_ind = current_indicators[indicator['indicator']]
+                indicators_to_amend.append({"id": this_ind["id"], "expiration": "", "title": "", "is_active": 1})
+                del current_indicators[indicator['indicator']]
+
+        for indicator in current_indicators.values():
+            indicators_to_amend.append({"id": indicator["id"], "expiration": expire_date, "title": "Expired"})
+
+        body = {'indicators': {'add': indicators_to_add, 'edit': indicators_to_amend}}
 
         response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
         return response

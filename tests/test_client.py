@@ -1,4 +1,5 @@
 import datetime
+import dateutil.parser
 import hashlib
 import io
 import json
@@ -290,7 +291,7 @@ class TestPulseCreate(TestOTXv2):
     @classmethod
     def tearDownClass(cls):
         delete_user(cls.user1)
-    
+
     def test_create_pulse_simple(self):
         name = "Pyclient-simple-unittests-" + generate_rand_string(8, charset=string.hexdigits).lower()
         # print("test_create_pulse_simple submitting pulse: " + name)
@@ -356,21 +357,90 @@ class TestPulseCreate(TestOTXv2):
         response = self.otx.create_pulse(name=name, public=False, indicators=validated_indicator_list)
         self.assertTrue(response.get('name', '') == name)
         self.assertTrue(len(response.get('indicators', [])) == len(validated_indicator_list))
-        return
 
     def test_create_pulse_and_update(self):
         """
         Test: create a pulse then replace the indicators
         """
-        indicator_list = [ {'indicator': "one.com", 'type': 'domain'} ]
-        new_indicators = [ {'indicator': "two.com", 'type': 'domain'} ]
+        indicator_list = [{'indicator': "one.com", 'type': 'domain'}]
+        new_indicators = [{'indicator': "two.com", 'type': 'domain'}]
         name = "Pyclient-indicators-unittests-modify-pulse"
         response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
         pulse_id = response['id']
         response = self.otx.replace_pulse_indicators(pulse_id, new_indicators)
         new_indicators = str(response['indicators']['indicators'])
         self.assertTrue('two.com' in new_indicators)
-        return
+
+    def test_replace_indicators(self):
+        indicator_list = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+        ]
+        name = "Pyclient-indicators-unittests-modify-pulse"
+        response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
+        pulse_id = response['id']
+
+        check_fields = ['indicator', 'type', 'expiration', 'is_active']
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
+        # add new indicator, don't include one.com which should set it to expired
+        new_indicators = [
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "three.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+        ]
+        self.otx.replace_pulse_indicators(pulse_id, new_indicators)
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
+        ]
+        actual = sorted(
+            [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)],
+            key=lambda x: x['indicator']
+        )
+        for a in actual:
+            if a['expiration']:
+                exp = dateutil.parser.parse(a['expiration'])
+                a['expiration'] = 'today' if abs((exp - datetime.datetime.utcnow())).total_seconds() < 60 else a['expiration']
+        self.assertEqual(expected, actual)
+
+        # add one.com back, which should reactivate it, and leave two.com out which should expire it
+        new_indicators = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "three.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+        ]
+        self.otx.replace_pulse_indicators(pulse_id, new_indicators)
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1},
+        ]
+        actual = sorted(
+            [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)],
+            key=lambda x: x['indicator']
+        )
+        for a in actual:
+            if a['expiration']:
+                exp = dateutil.parser.parse(a['expiration'])
+                a['expiration'] = 'today' if abs((exp - datetime.datetime.utcnow())).total_seconds() < 60 else a['expiration']
+        self.assertEqual(expected, actual)
 
     def test_create_pulse_and_edit(self):
         """
@@ -385,8 +455,6 @@ class TestPulseCreate(TestOTXv2):
         response = self.otx.edit_pulse(pulse_id, add_indicators)
         new_indicators = str(response['indicators']['indicators'])
         self.assertTrue('added.com' in new_indicators)
-        return
-
 
     def test_create_pulse_and_edit_via_patch_pulse(self):
         """
@@ -406,8 +474,6 @@ class TestPulseCreate(TestOTXv2):
         response = self.otx.edit_pulse(pulse_id, pp.getBody())
         new_tags = str(response['tags'])
         self.assertTrue('addtag1' in new_tags)
-        return
-
 
     def test_create_pulse_tlp(self):
         """
@@ -426,7 +492,6 @@ class TestPulseCreate(TestOTXv2):
             self.assertTrue(response.get('name', '') == name)
             self.assertTrue(response.get('TLP', '') == tlp)
             self.assertFalse(response.get('public'))
-        return
 
     def test_create_pulse_groups(self):
         """
@@ -459,8 +524,6 @@ class TestPulseCreate(TestOTXv2):
 
                 self.assertEqual(response.get('name', ''), name)
                 self.assertEqual(response.get('group_ids'), expected)
-
-        return
 
     def test_more_params(self):
         response = self.otx.create_pulse(
