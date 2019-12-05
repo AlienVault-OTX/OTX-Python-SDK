@@ -382,12 +382,12 @@ class TestPulseCreate(TestOTXv2):
         response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
         pulse_id = response['id']
 
-        check_fields = ['indicator', 'type', 'expiration', 'is_active']
+        check_fields = ['indicator', 'type', 'expiration', 'is_active', 'title']
         expected = [
-            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
-            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
-            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
-            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
         ]
         actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)], key=lambda x: x['indicator'])
         self.assertEqual(expected, actual)
@@ -401,11 +401,11 @@ class TestPulseCreate(TestOTXv2):
         ]
         self.otx.replace_pulse_indicators(pulse_id, new_indicators)
         expected = [
-            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
-            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
-            {'indicator': u'one.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1},
-            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1},
-            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1, 'title': u'Expired'},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
         ]
         actual = sorted(
             [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)],
@@ -419,18 +419,18 @@ class TestPulseCreate(TestOTXv2):
 
         # add one.com back, which should reactivate it, and leave two.com out which should expire it
         new_indicators = [
-            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "one.com", 'type': 'domain', 'title': 'new title'},
             {'indicator': "three.com", 'type': 'domain'},
             {'indicator': "foo@alienvault.com", 'type': 'email'},
             {'indicator': "bar@alienvault.com", 'type': 'email'},
         ]
         self.otx.replace_pulse_indicators(pulse_id, new_indicators)
         expected = [
-            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
-            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1},
-            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1},
-            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1},
-            {'indicator': u'two.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u'new title'},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1, 'title': u'Expired'},
         ]
         actual = sorted(
             [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)],

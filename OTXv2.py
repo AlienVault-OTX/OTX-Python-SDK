@@ -541,6 +541,7 @@ class OTXv2(object):
         :return: Return the new pulse
 
         """
+
         expire_date = datetime.datetime.utcnow().isoformat()
         current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id)}
 
@@ -551,8 +552,13 @@ class OTXv2(object):
             if indicator['indicator'] not in current_indicators:
                 indicators_to_add.append(indicator)
             else:
-                this_ind = current_indicators[indicator['indicator']]
-                indicators_to_amend.append({"id": this_ind["id"], "expiration": "", "title": "", "is_active": 1})
+                indicator.update({
+                    'id': current_indicators[indicator['indicator']]['id'],
+                    'title': indicator.get('title', ''),
+                    'expiration': indicator.get('expiration', ''),
+                    'is_active': 1,
+                })
+                indicators_to_amend.append(indicator)
                 del current_indicators[indicator['indicator']]
 
         for indicator in current_indicators.values():
