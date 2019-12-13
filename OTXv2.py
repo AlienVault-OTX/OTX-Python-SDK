@@ -91,7 +91,7 @@ class OTXv2(object):
     def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com", project="SDK", user_agent=None):
         self.key = api_key
         self.server = server
-        self.proxies = {'http': proxy} if proxy else {}
+        self.proxies = {'http': proxy, 'https': proxy} if proxy else {}
         self.request_session = None
         self.headers = {
             'X-OTX-API-KEY': self.key,
