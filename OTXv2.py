@@ -88,14 +88,20 @@ class OTXv2(object):
     Main class to interact with the AlienVault OTX API.
     """
 
-    def __init__(self, api_key, proxy=None, server="https://otx.alienvault.com", project="SDK", user_agent=None):
+    def __init__(self, api_key, proxy=None, proxy_https=None, server="https://otx.alienvault.com", project="SDK", user_agent=None):
         self.key = api_key
         self.server = server
-        self.proxies = {'http': proxy} if proxy else {}
+
+        self.proxies = {}
+        if proxy:
+            self.proxies['http'] = proxy
+        if proxy_https:
+            self.proxies['https'] = proxy_https
+
         self.request_session = None
         self.headers = {
             'X-OTX-API-KEY': self.key,
-            'User-Agent': user_agent or 'OTX Python {}/1.5.5'.format(project),
+            'User-Agent': user_agent or 'OTX Python {}/1.5.6'.format(project),
             'Content-Type': 'application/json'
         }
 
@@ -442,7 +448,6 @@ class OTXv2(object):
         :param indicator_types: IndicatorTypes to return
         :param author_name limit indicators to ones found in pulses authored by author_name
         :param modified_since limit indicators to ones found in pulses modified since modified_since
-        :include_inactive include indicators that are set to inactive (due to expiration typically)
         :return: yields the indicator object for use
         """
         name_list = IndicatorTypes.to_name_list(indicator_types)
@@ -491,7 +496,7 @@ class OTXv2(object):
         pulse_url = self.create_url(DELETE_PULSE.format(pulse_id))
         return self.get(pulse_url)
 
-    def get_pulse_indicators(self, pulse_id, limit=100):
+    def get_pulse_indicators(self, pulse_id, include_inactive=False, limit=100):
         """
         For a given pulse_id, get list of indicators (IOCs)
         :param pulse_id: Object ID specify which pulse to get indicators from
@@ -501,7 +506,7 @@ class OTXv2(object):
         if not isinstance(pulse_id, string_types) or not re.match(r"^[0-9a-zA-Z]{24}$", pulse_id):
            raise BadRequest("pulse_id should be a 24 character hex string")
 
-        url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit)
+        url = self.create_url(PULSE_DETAILS + str(pulse_id) + "/indicators", limit=limit, include_inactive=1 if include_inactive else 0)
         return self.walkapi(url)
 
     def edit_pulse(self, pulse_id, body):
@@ -539,7 +544,6 @@ class OTXv2(object):
         :param pulse_id: The pulse you are replacing the indicators with
         :param new_indicators: The complete set of indicators this pulse will now contain
         :return: Return the new pulse
-
         """
 
         expire_date = datetime.datetime.utcnow().isoformat()
@@ -568,6 +572,10 @@ class OTXv2(object):
 
         response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
         return response
+
+    def remove_pulse_indicators(self, pulse_id, indicator_ids):
+        body = {'indicators': {'remove': [{'id': i} for i in indicator_ids]}}
+        return self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
 
     def get_indicator_details_by_section(self, indicator_type, indicator, section='general'):
         """

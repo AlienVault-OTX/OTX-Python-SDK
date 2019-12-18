@@ -256,6 +256,60 @@ class TestPulseDetails(TestOTXv2):
         with self.assertRaises(BadRequest):   # not a string
             res = self.otx.get_pulse_indicators(1)
 
+    def test_get_pulse_indicators_expired(self):
+        # create and check pulse
+        indicator_list = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+        ]
+        name = "Pyclient-indicators-unittests-modify-pulse"
+        response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
+        pulse_id = response['id']
+
+        check_fields = ['indicator', 'type', 'expiration', 'is_active', 'title']
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None, 'is_active': 1, 'title': u''},
+        ]
+        ind = self.otx.get_pulse_indicators(pulse_id)
+        actual = sorted([{f: x[f] for f in check_fields} for x in ind], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
+        # set one.com to expired
+        to_expire = [x['id'] for x in ind if x['indicator'] == 'one.com']
+        self.assertEqual(len(to_expire), 1)
+        body = {
+            'indicators': {
+                'edit': [{'id': i, 'is_active': False} for i in to_expire]
+            }
+        }
+        self.otx.edit_pulse(pulse_id, body=body)
+
+        # should't show up
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None, 'is_active': 1, 'title': u''},
+        ]
+        ind = self.otx.get_pulse_indicators(pulse_id)
+        actual = sorted([{f: x[f] for f in check_fields} for x in ind], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
+        # but it should if we pass include_inactive
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 0, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        ind = self.otx.get_pulse_indicators(pulse_id, include_inactive=True)
+        actual = sorted([{f: x[f] for f in check_fields} for x in ind], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
 
 class TestIndicatorDetails(TestOTXv2):
     def test_get_indicator_details_IPv4_by_section(self):
@@ -278,6 +332,7 @@ class TestIndicatorDetails(TestOTXv2):
         full_details = self.otx.get_indicator_details_full(IndicatorTypes.EMAIL, "me@rustybrooks.com")
         self.assertTrue(sorted(full_details.keys()) == sorted(IndicatorTypes.EMAIL.sections))
         # pprint.pprint(full_details)
+
 
 
 class TestPulseCreate(TestOTXv2):
@@ -441,6 +496,71 @@ class TestPulseCreate(TestOTXv2):
                 exp = dateutil.parser.parse(a['expiration'])
                 a['expiration'] = 'today' if abs((exp - datetime.datetime.utcnow())).total_seconds() < 60 else a['expiration']
         self.assertEqual(expected, actual)
+
+    def test_remove_indicators(self):
+        check_fields = ['indicator', 'type', 'expiration', 'is_active', 'title']
+
+        # make pulse 1 and verify contents
+        indicator_list1 = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+        ]
+        name1 = "Pyclient-indicators-unittests-modify-pulse1"
+        response = self.otx.create_pulse(name=name1, public=False, indicators=indicator_list1)
+        pulse_id1 = response['id']
+        ind1 = self.otx.get_pulse_indicators(pulse_id1)
+
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in ind1], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
+        # make pulse 2 and verify contents
+        indicator_list2 = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "baz@alienvault.com", 'type': 'email'},
+        ]
+        name2 = "Pyclient-indicators-unittests-modify-pulse1"
+        response = self.otx.create_pulse(name=name2, public=False, indicators=indicator_list2)
+        pulse_id2 = response['id']
+        ind2 = self.otx.get_pulse_indicators(pulse_id2)
+
+        expected = [
+            {'indicator': u'baz@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in ind2], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
+        # determine indicator ids to remove
+        to_rem1 = [x['id'] for x in ind1 if x['indicator'] in ['one.com', 'two.com']]
+        self.otx.remove_pulse_indicators(pulse_id=pulse_id1, indicator_ids=to_rem1)
+
+        # check that pulse 1 has those indicators removed
+        expected = [
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id1)], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
+        # check that pulse 2 has same indicators as before
+        expected = [
+            {'indicator': u'baz@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id2)], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
 
     def test_create_pulse_and_edit(self):
         """
@@ -678,7 +798,7 @@ class TestRequests(TestOTXv2):
 
     def test_user_agent(self):
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, project='foo')
-        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.5')
+        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.6')
 
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, user_agent='foo')
         self.assertEqual(o.headers['User-Agent'], 'foo')
