@@ -334,7 +334,6 @@ class TestIndicatorDetails(TestOTXv2):
         # pprint.pprint(full_details)
 
 
-
 class TestPulseCreate(TestOTXv2):
     user1 = "qatester-git-pulse-{}".format(rand)
     otx = None
@@ -497,6 +496,91 @@ class TestPulseCreate(TestOTXv2):
                 a['expiration'] = 'today' if abs((exp - datetime.datetime.utcnow())).total_seconds() < 60 else a['expiration']
         self.assertEqual(expected, actual)
 
+    def test_add_or_update_indicators(self):
+        indicator_list = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+            {'indicator': '8.8.8.8', 'type': 'IPv4'}
+        ]
+        name = "Pyclient-indicators-unittests-modify-pulse"
+        response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
+        pulse_id = response['id']
+
+        check_fields = ['indicator', 'type', 'expiration', 'is_active', 'title']
+        expected = [
+            {'indicator': u'8.8.8.8',            'type': u'IPv4',   'expiration': 'month', 'is_active': 1, 'title': u''},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id, include_inactive=True)], key=lambda x: x['indicator'])
+        for a in actual:
+            if a['expiration']:
+                exp = dateutil.parser.parse(a['expiration'])
+                a['expiration'] = 'month' if 60*60*24*27 < abs((exp - datetime.datetime.utcnow())).total_seconds() < 60*60*24*32 else a['expiration']
+        self.assertEqual(expected, actual)
+
+        # add some indicators and update others.  omitted indicators should stay same
+        indicators = [
+            {'indicator': "two.com", 'type': 'domain'},  # no change
+            {'indicator': "three.com", 'type': 'domain'}, # new indicator
+            {'indicator': "one.com", 'type': 'domain', 'title': 'one.com title'}, # change title
+        ]
+        self.otx.add_or_update_pulse_indicators(pulse_id, indicators)
+        expected = [
+            {'indicator': u'8.8.8.8',            'type': u'IPv4',   'expiration': 'month', 'is_active': 1, 'title': u''},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1,  'title': u'one.com title'},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id, include_inactive=True)], key=lambda x: x['indicator'])
+        for a in actual:
+            if a['expiration']:
+                exp = dateutil.parser.parse(a['expiration'])
+                a['expiration'] = 'month' if 60*60*24*27 < abs((exp - datetime.datetime.utcnow())).total_seconds() < 60*60*24*32 else a['expiration']
+        self.assertEqual(expected, actual)
+
+        # expire an indicator
+        indicators = [
+            {'indicator': u'8.8.8.8', 'is_active': 0},
+        ]
+        self.otx.add_or_update_pulse_indicators(pulse_id, indicators)
+        expected = [
+            {'indicator': u'8.8.8.8',            'type': u'IPv4',   'expiration': 'month', 'is_active': 0, 'title': u''},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1,  'title': u'one.com title'},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id, include_inactive=True)], key=lambda x: x['indicator'])
+        for a in actual:
+            if a['expiration']:
+                exp = dateutil.parser.parse(a['expiration'])
+                a['expiration'] = 'month' if 60*60*24*27 < abs((exp - datetime.datetime.utcnow())).total_seconds() < 60*60*24*32 else a['expiration']
+        self.assertEqual(expected, actual)
+
+        # set a new expiration
+        indicators = [
+            {'indicator': u'8.8.8.8', 'is_active': 1, 'expiration': '2020-01-01T00:00:00'},
+        ]
+        self.otx.add_or_update_pulse_indicators(pulse_id, indicators)
+        expected = [
+            {'indicator': u'8.8.8.8',            'type': u'IPv4',   'expiration': '2020-01-01T00:00:00', 'is_active': 1, 'title': u''},
+            {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1,  'title': u'one.com title'},
+            {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
+        ]
+        actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id, include_inactive=True)], key=lambda x: x['indicator'])
+        self.assertEqual(expected, actual)
+
     def test_remove_indicators(self):
         check_fields = ['indicator', 'type', 'expiration', 'is_active', 'title']
 
@@ -560,7 +644,6 @@ class TestPulseCreate(TestOTXv2):
         ]
         actual = sorted([{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id2)], key=lambda x: x['indicator'])
         self.assertEqual(expected, actual)
-
 
     def test_create_pulse_and_edit(self):
         """

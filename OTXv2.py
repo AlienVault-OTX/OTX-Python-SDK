@@ -528,7 +528,7 @@ class OTXv2(object):
         Adds indicators to a pulse
         :param pulse_id: The pulse you are replacing the indicators with
         :param new_indicators: The set of new indicators
-        :return: Return the new pulse
+        :return: The updated pulse
         """
 
         response = self.edit_pulse(pulse_id, body={
@@ -536,6 +536,38 @@ class OTXv2(object):
                 'add': new_indicators
             }
         })
+        return response
+
+    def add_or_update_pulse_indicators(self, pulse_id, indicators):
+        """
+        Add indicators to pulse if not currently present, otherwise add indicators to pulse as new
+        :param pulse_id: The pulse id you're updating
+        :param indicators: the indicators you are adding or updating
+        :return: The updated pulse
+        """
+
+        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id, include_inactive=True)}
+
+        indicators_to_add = []
+        indicators_to_update = []
+
+        for indicator in indicators:
+            if indicator['indicator'] in current_indicators:
+                new_indicator = copy.deepcopy(indicator)
+                new_indicator.update({
+                    'id': current_indicators[indicator['indicator']]['id'],
+                })
+                indicators_to_update.append(new_indicator)
+            else:
+                indicators_to_add.append(indicator)
+
+        body = {
+            'indicators': {
+                'add': indicators_to_add,
+                'edit': indicators_to_update,
+            }
+        }
+        response = self.patch(self.create_url(PULSE_DETAILS + str(pulse_id)), body=body)
         return response
 
     def replace_pulse_indicators(self, pulse_id, new_indicators):
@@ -547,7 +579,7 @@ class OTXv2(object):
         """
 
         expire_date = datetime.datetime.utcnow().isoformat()
-        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id)}
+        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id, include_inactive=True)}
 
         indicators_to_add = []
         indicators_to_amend = []
