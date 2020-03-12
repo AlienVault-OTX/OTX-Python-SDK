@@ -526,7 +526,7 @@ class TestPulseCreate(TestOTXv2):
         # add some indicators and update others.  omitted indicators should stay same
         indicators = [
             {'indicator': "two.com", 'type': 'domain'},  # no change
-            {'indicator': "three.com", 'type': 'domain'}, # new indicator
+            {'indicator': "three.com", 'type': 'domain'},  # new indicator
             {'indicator': "one.com", 'type': 'domain', 'title': 'one.com title'}, # change title
         ]
         self.otx.add_or_update_pulse_indicators(pulse_id, indicators)
@@ -566,12 +566,13 @@ class TestPulseCreate(TestOTXv2):
         self.assertEqual(expected, actual)
 
         # set a new expiration
+        new_expiration = (datetime.datetime.utcnow().replace(microsecond=0) + datetime.timedelta(days=14)).isoformat()
         indicators = [
-            {'indicator': u'8.8.8.8', 'is_active': 1, 'expiration': '2020-01-01T00:00:00'},
+            {'indicator': u'8.8.8.8', 'expiration': new_expiration},
         ]
         self.otx.add_or_update_pulse_indicators(pulse_id, indicators)
         expected = [
-            {'indicator': u'8.8.8.8',            'type': u'IPv4',   'expiration': '2020-01-01T00:00:00', 'is_active': 1, 'title': u''},
+            {'indicator': u'8.8.8.8',            'type': u'IPv4',   'expiration': new_expiration, 'is_active': 1, 'title': u''},
             {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
             {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
             {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1,  'title': u'one.com title'},
@@ -881,7 +882,7 @@ class TestRequests(TestOTXv2):
 
     def test_user_agent(self):
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, project='foo')
-        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.7')
+        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.8')
 
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, user_agent='foo')
         self.assertEqual(o.headers['User-Agent'], 'foo')

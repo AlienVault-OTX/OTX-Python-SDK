@@ -101,7 +101,7 @@ class OTXv2(object):
         self.request_session = None
         self.headers = {
             'X-OTX-API-KEY': self.key,
-            'User-Agent': user_agent or 'OTX Python {}/1.5.7'.format(project),
+            'User-Agent': user_agent or 'OTX Python {}/1.5.8'.format(project),
             'Content-Type': 'application/json'
         }
 
@@ -119,6 +119,24 @@ class OTXv2(object):
             ))
 
         return self.request_session
+
+    def now(self):
+        return pytz.utc.localize(datetime.datetime.utcnow())
+
+    @classmethod
+    def fix_date(cls, date_str):
+        if date_str is None:
+            return None
+
+        if isinstance(date_str, datetime.datetime):
+            dt = date_str
+        else:
+            dt = dateutil.parser.parse(date_str) if date_str else None
+
+        if dt and dt.tzinfo is None:
+            dt = pytz.utc.localize(dt)
+
+        return dt
 
     @classmethod
     def handle_response_errors(cls, response):
@@ -215,7 +233,7 @@ class OTXv2(object):
             :param industries(list of strings) list of industries related to pulse
             :param malware_families(list of strings) list of malware families related to pulse
             :param attack_ids(list of strings) list of ATT&CK ids related to pulse
-            
+
         :return: request body response
         :raises BadRequest (400) On failure, BadRequest will be raised containing the invalid fields.
 
@@ -237,7 +255,7 @@ class OTXv2(object):
             'tags': kwargs.get('tags', []),
             'references': kwargs.get('references', []),
             'indicators': kwargs.get('indicators', []),
-            'group_ids': kwargs.get('group_ids', []),  
+            'group_ids': kwargs.get('group_ids', []),
             'adversary': kwargs.get('adversary'),
             'targeted_countries': kwargs.get('targeted_countries', []),
             'industries': kwargs.get('industries', []),
@@ -404,7 +422,7 @@ class OTXv2(object):
         :param max_results: Limit the number of pulses returned in response
         :return: All pulses matching `query`
         """
-        search_pulses_url = self.create_url(SEARCH_PULSES, q=query, page=1, limit=20)
+        search_pulses_url = self.create_url(SEARCH_PULSES, q=query, page=1, limit=25)
         return self._get_paginated_resource(search_pulses_url, max_results=max_results)
 
     def search_users(self, query, max_results=25):
@@ -430,7 +448,6 @@ class OTXv2(object):
         additional_fields = {}
         while next_page_url and len(results) < max_results:
             json_data = self.get(next_page_url)
-            max_results -= len(json_data.get('results'))
             for r in json_data.pop("results"):
                 results.append(r)
             next_page_url = json_data.pop("next")
@@ -552,12 +569,14 @@ class OTXv2(object):
         indicators_to_update = []
 
         for indicator in indicators:
+            indicator = copy.deepcopy(indicator)
             if indicator['indicator'] in current_indicators:
-                new_indicator = copy.deepcopy(indicator)
-                new_indicator.update({
-                    'id': current_indicators[indicator['indicator']]['id'],
-                })
-                indicators_to_update.append(new_indicator)
+                indicator = copy.deepcopy(indicator)
+                indicator['id'] = current_indicators[indicator['indicator']]['id']
+                if 'expiration' in indicator and 'is_active' not in indicator:
+                    if self.fix_date(indicator['expiration']) > self.now():
+                        indicator['is_active'] = 1
+                indicators_to_update.append(indicator)
             else:
                 indicators_to_add.append(indicator)
 
@@ -776,9 +795,6 @@ class OTXv2Cached(OTXv2):
 
         self.load_data()
 
-    def now(self):
-        return pytz.utc.localize(datetime.datetime.utcnow())
-
     def load_data(self):
         datfile = os.path.join(self.cache_dir, 'data.json')
 
@@ -928,21 +944,6 @@ class OTXv2Cached(OTXv2):
                     yield pulse
                 else:
                     raise Exception("return_type should be one of ['pulse_id', 'pulse']")
-
-    @classmethod
-    def fix_date(cls, dtstr):
-        if dtstr is None:
-            return None
-
-        if isinstance(dtstr, datetime.datetime):
-            dt = dtstr
-        else:
-            dt = dateutil.parser.parse(dtstr) if dtstr else None
-
-        if dt and dt.tzinfo is None:
-            dt = pytz.utc.localize(dt)
-
-        return dt
 
     # FIXME this is unordered...
     def getall(self, modified_since=None, author_name=None, iter=False, limit=None, max_page=None, max_items=None):
