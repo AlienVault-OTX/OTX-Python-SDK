@@ -114,7 +114,7 @@ class OTXv2(object):
                 max_retries=Retry(
                     total=5,
                     status_forcelist=[429, 500, 502, 503],
-                    backoff_factor=5,
+                    backoff_factor=1,
                 )
             ))
 
