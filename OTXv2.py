@@ -29,9 +29,12 @@ SEARCH_USERS = "{}/search/users".format(API_V1_ROOT)                          # 
 PULSE_DETAILS = "{}/pulses/".format(API_V1_ROOT)                              # pulse meta data
 PULSE_INDICATORS = PULSE_DETAILS + "indicators"                               # pulse indicators
 PULSE_CREATE = "{}/pulses/create".format(API_V1_ROOT)                         # create pulse
+PULSE_ADD_GROUP = "{}/groups/{{}}/add_pulse?pulse_id={{}}".format(API_V1_ROOT)
+PULSE_REMOVE_GROUP = "{}/groups/{{}}/remove_pulse?pulse_id={{}}".format(API_V1_ROOT)
 USER_PULSES = "{}/pulses/user/{{}}".format(API_V1_ROOT)                       # pulse feed for a user
 MY_PULSES = "{}/pulses/my".format(API_V1_ROOT)                       # pulse feed for a user
 SUBSCRIBE_PULSE = "{}/pulses/{{}}/subscribe".format(API_V1_ROOT)              # subscribe to pulse
+CLONE_PULSE = "{}/pulses/{{}}/clone".format(API_V1_ROOT)            # clone pulse
 UNSUBSCRIBE_PULSE = "{}/pulses/{{}}/unsubscribe".format(API_V1_ROOT)          # unsubscribe from pulse
 INDICATOR_DETAILS = "{}/indicators/".format(API_V1_ROOT)                      # indicator details
 VALIDATE_INDICATOR = "{}/pulses/indicators/validate".format(API_V1_ROOT)      # indicator details
@@ -46,6 +49,8 @@ SUBMIT_URL = "{}/indicators/submit_url".format(API_V1_ROOT)                   # 
 SUBMIT_URLS = "{}/indicators/submit_urls".format(API_V1_ROOT)                 # submit multiple urls for analysis
 SUBMITTED_URLS = "{}/indicators/submitted_urls".format(API_V1_ROOT)           # status of submitted urls
 DELETE_PULSE = "{}/pulses/{{}}/delete".format(API_V1_ROOT)                   # Delete a pulse
+
+
 
 # logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -101,7 +106,7 @@ class OTXv2(object):
         self.request_session = None
         self.headers = {
             'X-OTX-API-KEY': self.key,
-            'User-Agent': user_agent or 'OTX Python {}/1.5.8'.format(project),
+            'User-Agent': user_agent or 'OTX Python {}/1.5.9'.format(project),
             'Content-Type': 'application/json'
         }
 
@@ -267,6 +272,14 @@ class OTXv2(object):
         if not body.get('name'):
             raise ValueError('Name required.  Please resubmit your pulse with a name (string, 5-64 chars).')
         return self.post(self.create_url(PULSE_CREATE), body=body)
+
+    def group_add_pulse(self, group_id, pulse_id):
+        url = PULSE_ADD_GROUP.format(group_id, pulse_id)
+        return self.get(url)
+
+    def group_remove_pulse(self, group_id, pulse_id):
+        url = PULSE_REMOVE_GROUP.format(group_id, pulse_id)
+        return self.get(url)
 
     def validate_indicator(self, indicator_type, indicator, description=""):
         """
@@ -694,6 +707,11 @@ class OTXv2(object):
     def unsubscribe_from_pulse(self, pulse_id):
         url = UNSUBSCRIBE_PULSE.format(pulse_id)
         return self.get(url)
+
+    def clone_pulse(self, pulse_id, new_name=None):
+        new_name = new_name or p['name']
+        url = CLONE_PULSE.format(pulse_id)
+        return self.post(url, body={'name': new_name})
 
     def submit_file(self, filename=None, file_handle=None):
         """

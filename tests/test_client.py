@@ -29,7 +29,6 @@ def create_user(username, password, email, group_ids=None):
     """
     Create a user, and get the API key
     """
-    print("creating user {} (groups={})".format(username, group_ids))
     requests.post(ALIEN_DEV_SERVER + 'otxapi/qatests/setup/', json={"users": [
         {"username": username, "password": password, "email": email, "group_ids": group_ids}
     ]})
@@ -37,6 +36,7 @@ def create_user(username, password, email, group_ids=None):
     j = json.loads(r.text)
     r = requests.get(ALIEN_DEV_SERVER + 'otxapi/user/?detailed=true', headers={'Authorization': j['key']})
     j = r.json()
+    print("creating user {} (key={} groups={})".format(username, j['api_keys'][0]['api_key'],  group_ids))
     return j['api_keys'][0]['api_key']
 
 
@@ -752,6 +752,63 @@ class TestPulseCreate(TestOTXv2):
             u'targeted_countries': [u'Afghanistan', u'Anguilla'],
          })
 
+    def test_clone_pulse(self):
+        indicator_list = [
+            {'indicator': "one.com", 'type': 'domain'},
+            {'indicator': "two.com", 'type': 'domain'},
+            {'indicator': "foo@alienvault.com", 'type': 'email'},
+            {'indicator': "bar@alienvault.com", 'type': 'email'},
+        ]
+
+        # First clone public pulse
+        name = "Pyclient-indicators-unittests-clone-pulse"
+        response = self.otx.create_pulse(name=name, public=True, indicators=indicator_list)
+        pulse_id = response['id']
+        print("pulse_id={}".format(pulse_id))
+
+        r = self.otx.clone_pulse(pulse_id, new_name='Cloned pulse')
+        new_id = r.pop('id')
+        self.assertEqual(r, {
+            'detail': 'clone successful.'
+        })
+        np = self.otx.get_pulse_details(new_id)
+        self.assertEqual(
+            sorted([x['indicator'] for x in np['indicators']]),
+            ['bar@alienvault.com', 'foo@alienvault.com', 'one.com', 'two.com']
+        )
+        self.assertEqual(np['name'], 'Cloned pulse')
+
+    def test_group_add_remove_pulse(self):
+        indicator_list = [
+            {'indicator': "one.com", 'type': 'domain'},
+        ]
+        name = "Pyclient-indicators-unittests-add-remove-pulse"
+        response = self.otx.create_pulse(name=name, public=True, indicators=indicator_list)
+        pulse_id = response['id']
+
+        for group_id, expected in [
+            (1, 'error'),  # Not a member of group 1
+            (51, [51]),
+            (2931, [51, 2931]),
+            (-51, [2931]),
+            (-2931, []),
+        ]:
+            if expected == 'error':
+                with self.assertRaises(InvalidAPIKey):
+                    if group_id > 0:
+                        self.otx2.group_add_pulse(group_id, pulse_id)
+                    else:
+                        self.otx2.group_remove_pulse(-1*group_id, pulse_id)
+            else:
+                if group_id > 0:
+                    response = self.otx2.group_add_pulse(group_id, pulse_id)
+                else:
+                    response = self.otx2.group_remove_pulse(-1*group_id, pulse_id)
+
+                self.assertEquals(response, {'status': 'success'})
+                d = self.otx2.get_pulse_details(pulse_id)
+                self.assertEqual(sorted([x['id'] for x in d['groups']]), expected)
+
 
 class TestPulseCreateInvalidKey(TestOTXv2):
     def setUp(self, **kwargs):
@@ -766,6 +823,7 @@ class TestPulseCreateInvalidKey(TestOTXv2):
                                   indicators=[],
                                   tags=[],
                                   references=[])
+
 
 
 class TestSubscription(unittest.TestCase):
@@ -854,6 +912,7 @@ class TestSubscription(unittest.TestCase):
         self.assertFalse(after2['is_subscribing'])
 
 
+
 class TestValidateIndicator(TestOTXv2):
     def test_validate_valid_domain(self):
         indicator = generate_rand_string(8, charset=string.ascii_letters).lower() + ".com"
@@ -882,7 +941,7 @@ class TestRequests(TestOTXv2):
 
     def test_user_agent(self):
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, project='foo')
-        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.8')
+        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.9')
 
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, user_agent='foo')
         self.assertEqual(o.headers['User-Agent'], 'foo')
