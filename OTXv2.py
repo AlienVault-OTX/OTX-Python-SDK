@@ -118,7 +118,7 @@ class OTXv2(object):
             self.request_session.mount('https://', HTTPAdapter(
                 max_retries=Retry(
                     total=5,
-                    status_forcelist=[429, 500, 502, 503],
+                    status_forcelist=[429, 500, 502, 503, 504],
                     backoff_factor=1,
                 )
             ))
