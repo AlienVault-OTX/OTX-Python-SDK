@@ -471,7 +471,7 @@ class OTXv2(object):
         resource.update(additional_fields)
         return resource
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=1000, max_page=None, max_items=None):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
@@ -526,7 +526,7 @@ class OTXv2(object):
         pulse_url = self.create_url(DELETE_PULSE.format(pulse_id))
         return self.get(pulse_url)
 
-    def get_pulse_indicators(self, pulse_id, include_inactive=False, limit=100):
+    def get_pulse_indicators(self, pulse_id, include_inactive=False, limit=1000):
         """
         For a given pulse_id, get list of indicators (IOCs)
         :param pulse_id: Object ID specify which pulse to get indicators from
@@ -785,7 +785,7 @@ class OTXv2(object):
             {'urls': urls}
         )
 
-    def submitted_urls(self, limit=50, first_page=1, max_page=None, max_items=None):
+    def submitted_urls(self, limit=1000, first_page=1, max_page=None, max_items=None):
         return self.walkapi(
             self.create_url(SUBMITTED_URLS, page=first_page, limit=limit),
             max_page=max_page, max_items=max_items
@@ -992,7 +992,7 @@ class OTXv2Cached(OTXv2):
     def getsince_iter(self, timestamp, limit=20, max_page=None, max_items=None):
         return self.getall(modified_since=timestamp, iter=True, limit=limit, max_page=max_page, max_items=max_items)
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=20, max_page=None, max_items=None):
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=1000, max_page=None, max_items=None):
         name_list = IndicatorTypes.to_name_list(indicator_types)
         for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
             for indicator in pulse["indicators"]:
