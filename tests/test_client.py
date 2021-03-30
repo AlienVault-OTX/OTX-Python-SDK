@@ -941,7 +941,7 @@ class TestRequests(TestOTXv2):
 
     def test_user_agent(self):
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, project='foo')
-        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.10')
+        self.assertEqual(o.headers['User-Agent'], 'OTX Python foo/1.5.11')
 
         o = OTXv2(self.api_key, server=ALIEN_DEV_SERVER, user_agent='foo')
         self.assertEqual(o.headers['User-Agent'], 'foo')
