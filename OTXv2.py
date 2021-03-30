@@ -373,7 +373,7 @@ class OTXv2(object):
         else:
             return list(self.walkapi_iter(url, max_page=max_page, max_items=max_items, method=method, body=body))
 
-    def getall(self, modified_since=None, author_name=None, limit=20, max_page=None, max_items=None, iter=False):
+    def getall(self, modified_since=None, author_name=None, limit=50, max_page=None, max_items=None, iter=False):
         """
         Get all pulses user is subscribed to.
         :param modified_since: datetime object representing earliest date you want returned in results
@@ -395,7 +395,7 @@ class OTXv2(object):
             max_page=max_page, max_items=max_items
         )
 
-    def getall_iter(self, author_name=None, modified_since=None, limit=20, max_page=None, max_items=None):
+    def getall_iter(self, author_name=None, modified_since=None, limit=50, max_page=None, max_items=None):
         """
         Get all pulses user is subscribed to, yield results.
         :param modified_since: datetime object representing earliest date you want returned in results
@@ -409,7 +409,7 @@ class OTXv2(object):
             max_page=max_page, max_items=max_items, iter=True,
         )
 
-    def getsince(self, timestamp, limit=20, max_page=None, max_items=None):
+    def getsince(self, timestamp, limit=50, max_page=None, max_items=None):
         """
         Get all pulses modified since a particular time.
         :param timestamp: iso formatted date time string
@@ -419,7 +419,7 @@ class OTXv2(object):
 
         return self.getall(limit=limit, modified_since=timestamp, max_page=max_page, max_items=max_items, iter=False)
 
-    def getsince_iter(self, timestamp, limit=20, max_page=None, max_items=None):
+    def getsince_iter(self, timestamp, limit=50, max_page=None, max_items=None):
         """
         Get all pulses modified since a particular time, yield results.
         :param timestamp: iso formatted date time string
@@ -471,7 +471,7 @@ class OTXv2(object):
         resource.update(additional_fields)
         return resource
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=1000, max_page=None, max_items=None):
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=50, max_page=None, max_items=None):
         """
         Get all the indicators contained within your pulses of the IndicatorTypes passed.
         By default returns all IndicatorTypes.
@@ -486,7 +486,7 @@ class OTXv2(object):
                 if indicator["type"] in name_list:
                     yield indicator
 
-    def getevents_since(self, timestamp, limit=20, max_page=None, max_items=None, iter=False):
+    def getevents_since(self, timestamp, limit=50, max_page=None, max_items=None, iter=False):
         """
         Get all events (activity) created or updated since a timestamp
         :param timestamp: ISO formatted datetime string to restrict results (not older than timestamp).
@@ -746,7 +746,7 @@ class OTXv2(object):
             if do_close:
                 file_handle.close()
 
-    def submitted_files(self, limit=50, hashes=None, first_page=1, max_page=None, max_items=None):
+    def submitted_files(self, limit=100, hashes=None, first_page=1, max_page=None, max_items=None):
         """
         Get status of submitted files
         :param hashes: list of sha256 hashes to check the results of (optional)
@@ -970,7 +970,7 @@ class OTXv2Cached(OTXv2):
         else:
             return list(self.getall_iter(modified_since=modified_since, author_name=author_name, limit=limit, max_page=max_page, max_items=max_items))
 
-    def getall_iter(self, modified_since=None, author_name=None, iter=False, limit=20, max_page=None, max_items=None):
+    def getall_iter(self, modified_since=None, author_name=None, iter=False, limit=50, max_page=None, max_items=None):
         count = 0
         for p in self.find_pulses(
             modified_since=modified_since,
@@ -986,13 +986,13 @@ class OTXv2Cached(OTXv2):
             if max_items and count > max_items:
                 break
 
-    def getsince(self, timestamp, limit=20, max_page=None, max_items=None):
+    def getsince(self, timestamp, limit=50, max_page=None, max_items=None):
         return self.getall(modified_since=timestamp, iter=False, limit=limit, max_page=max_page, max_items=max_items)
 
-    def getsince_iter(self, timestamp, limit=20, max_page=None, max_items=None):
+    def getsince_iter(self, timestamp, limit=50, max_page=None, max_items=None):
         return self.getall(modified_since=timestamp, iter=True, limit=limit, max_page=max_page, max_items=max_items)
 
-    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=1000, max_page=None, max_items=None):
+    def get_all_indicators(self, author_name=None, modified_since=None, indicator_types=IndicatorTypes.all_types, limit=50, max_page=None, max_items=None):
         name_list = IndicatorTypes.to_name_list(indicator_types)
         for pulse in self.getall_iter(author_name=author_name, modified_since=modified_since, limit=limit, max_page=max_page, max_items=max_items):
             for indicator in pulse["indicators"]:
