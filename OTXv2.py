@@ -93,9 +93,11 @@ class OTXv2(object):
     Main class to interact with the AlienVault OTX API.
     """
 
-    def __init__(self, api_key, proxy=None, proxy_https=None, server="https://otx.alienvault.com", project="SDK", user_agent=None):
+    def __init__(self, api_key, proxy=None, proxy_https=None, server="https://otx.alienvault.com", project="SDK", user_agent=None, verify="", cert=""):
         self.key = api_key
         self.server = server
+	self.verify = verify
+	self.cert = cert
 
         self.proxies = {}
         if proxy:
@@ -174,6 +176,8 @@ class OTXv2(object):
                 self.create_url(url, **kwargs),
                 headers=self.headers,
                 proxies=self.proxies,
+		verify=self.verify,
+		cert=self.cert,
             )
             return self.handle_response_errors(response).json()
         except requests.exceptions.RetryError:
@@ -192,6 +196,8 @@ class OTXv2(object):
             data=json.dumps(body),
             headers=self.headers,
             proxies=self.proxies,
+	    verify=self.verify,
+	    cert=self.cert,
         )
         return self.handle_response_errors(response).json()
 
@@ -211,6 +217,8 @@ class OTXv2(object):
             files=files,
             headers=headers or self.headers,
             proxies=self.proxies,
+	    verify=self.verify,
+	    cert=self.cert,
         )
         return self.handle_response_errors(response).json()
 
