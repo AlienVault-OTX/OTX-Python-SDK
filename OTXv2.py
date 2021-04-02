@@ -318,7 +318,7 @@ class OTXv2(object):
         :return: a formatted url (i.e. "/search/pulses")
         """
         uri = url_path.format(self.server)
-        uri = uri if uri.startswith("http") else self.server + uri
+        uri = uri if uri.startswith("http") else self.server.rstrip('/') + uri
         if kwargs:
             uri += "?" + urlencode(kwargs)
 
@@ -576,7 +576,7 @@ class OTXv2(object):
         :return: The updated pulse
         """
 
-        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id, include_inactive=True)}
+        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id, include_inactive=True, limit=2000)}
 
         indicators_to_add = []
         indicators_to_update = []
@@ -611,7 +611,7 @@ class OTXv2(object):
         """
 
         expire_date = datetime.datetime.utcnow().isoformat()
-        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id, include_inactive=True)}
+        current_indicators = {x['indicator']: x for x in self.get_pulse_indicators(pulse_id, include_inactive=True, limit=2000)}
 
         indicators_to_add = []
         indicators_to_amend = []

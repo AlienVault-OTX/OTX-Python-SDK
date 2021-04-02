@@ -421,8 +421,8 @@ class TestPulseCreate(TestOTXv2):
         name = "Pyclient-indicators-unittests-modify-pulse"
         response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
         pulse_id = response['id']
-        response = self.otx.replace_pulse_indicators(pulse_id, new_indicators)
-        new_indicators = str(response['indicators']['indicators'])
+        self.otx.replace_pulse_indicators(pulse_id, new_indicators)
+        new_indicators = str(self.otx.get_pulse_indicators(pulse_id))
         self.assertTrue('two.com' in new_indicators)
 
     def test_replace_indicators(self):
@@ -457,12 +457,12 @@ class TestPulseCreate(TestOTXv2):
         expected = [
             {'indicator': u'bar@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
             {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
-            {'indicator': u'one.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1, 'title': u'Expired'},
+            {'indicator': u'one.com',            'type': u'domain', 'expiration': 'today', 'is_active': 0, 'title': u'Expired'},
             {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
             {'indicator': u'two.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
         ]
         actual = sorted(
-            [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)],
+            [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id, include_inactive=True)],
             key=lambda x: x['indicator']
         )
         for a in actual:
@@ -484,10 +484,10 @@ class TestPulseCreate(TestOTXv2):
             {'indicator': u'foo@alienvault.com', 'type': u'email',  'expiration': None,    'is_active': 1, 'title': u''},
             {'indicator': u'one.com',            'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u'new title'},
             {'indicator': u'three.com',          'type': u'domain', 'expiration': None,    'is_active': 1, 'title': u''},
-            {'indicator': u'two.com',            'type': u'domain', 'expiration': 'today', 'is_active': 1, 'title': u'Expired'},
+            {'indicator': u'two.com',            'type': u'domain', 'expiration': 'today', 'is_active': 0, 'title': u'Expired'},
         ]
         actual = sorted(
-            [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id)],
+            [{f: x[f] for f in check_fields} for x in self.otx.get_pulse_indicators(pulse_id, include_inactive=True)],
             key=lambda x: x['indicator']
         )
         for a in actual:
@@ -656,8 +656,8 @@ class TestPulseCreate(TestOTXv2):
         name = "Pyclient-indicators-unittests-modify-pulse"
         response = self.otx.create_pulse(name=name, public=False, indicators=indicator_list)
         pulse_id = response['id']
-        response = self.otx.edit_pulse(pulse_id, add_indicators)
-        new_indicators = str(response['indicators']['indicators'])
+        self.otx.edit_pulse(pulse_id, add_indicators)
+        new_indicators = str(self.otx.get_pulse_indicators(pulse_id))
         self.assertTrue('added.com' in new_indicators)
 
     def test_create_pulse_and_edit_via_patch_pulse(self):
@@ -738,14 +738,14 @@ class TestPulseCreate(TestOTXv2):
             industries=["Industry1", "Industry2"],
             targeted_countries=["Afghanistan", "Anguilla"],
             malware_families=["Backdoor:Linux/Netbus", "Backdoor:Linux/Cyrax"],
-            attack_ids=["T1000", "T1486"],
+            attack_ids=["T1001", "T1002"],
             adversary="APT 1",
         )
 
         check_fields = ['industries', 'targeted_countries', 'malware_families', 'attack_ids', 'adversary', 'group_ids']
         self.assertEqual({k: response[k] for k in check_fields}, {
             u'adversary': u'APT 1',
-            u'attack_ids': [u'T1000', u'T1486'],
+            u'attack_ids': [u'T1001', u'T1002'],
             u'group_ids': [],
             u'industries': [u'Industry1', u'Industry2'],
             u'malware_families': [u'Backdoor:Linux/Netbus', u'Backdoor:Linux/Cyrax'],
@@ -823,7 +823,6 @@ class TestPulseCreateInvalidKey(TestOTXv2):
                                   indicators=[],
                                   tags=[],
                                   references=[])
-
 
 
 class TestSubscription(unittest.TestCase):
