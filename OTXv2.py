@@ -93,7 +93,10 @@ class OTXv2(object):
     Main class to interact with the AlienVault OTX API.
     """
 
-    def __init__(self, api_key, proxy=None, proxy_https=None, server="https://otx.alienvault.com", project="SDK", user_agent=None, verify="", cert=""):
+    def __init__(
+        self, api_key, proxy=None, proxy_https=None, server="https://otx.alienvault.com", project="SDK",
+        user_agent=None, verify=True, cert=None
+    ):
         self.key = api_key
         self.server = server
         self.verify = verify
