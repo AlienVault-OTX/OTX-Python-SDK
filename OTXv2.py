@@ -86,6 +86,13 @@ class RetryError(Exception):
 
     def __str__(self):
         return repr(self.value)
+    
+class UnexpectedHTTPError(Exception):
+    def __init__(self, value=None):
+        self.value = value or "Unexpected HTTP error"
+
+    def __str__(self):
+        return repr(self.value)
 
 
 class OTXv2(object):
@@ -163,7 +170,7 @@ class OTXv2(object):
         elif response.status_code == 404:
             raise NotFound()
         elif str(response.status_code)[0] != "2":
-            raise Exception("Unexpected http code: %r, response=%r", response.status_code, _response_json())
+            raise UnexpectedHTTPError("Unexpected http code: %r, response=%r", response.status_code, _response_json())
 
         return response
 
