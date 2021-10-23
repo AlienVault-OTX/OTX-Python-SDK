@@ -63,4 +63,4 @@ Additional Examples:
 - Maintain a feed of indicators in a pulse for users - https://github.com/AlienVault-OTX/OTX-Python-SDK/blob/master/examples/update_feed.py
 - Adding domains to an existing pulse - https://github.com/AlienVault-OTX/OTX-Python-SDK/blob/master/examples/PulseManager.py
 
-More examples are at https://otx.alienvault.com/api/
+More examples are at https://otx.alienvault.com/api
