@@ -95,7 +95,7 @@ class OTXv2(object):
 
     def __init__(
         self, api_key, proxy=None, proxy_https=None, server="https://otx.alienvault.com", project="SDK",
-        user_agent=None, verify=True, cert=None
+        user_agent=None, verify=True, cert=None, timeout=None
     ):
         self.key = api_key
         self.server = server
@@ -114,6 +114,7 @@ class OTXv2(object):
             'User-Agent': user_agent or 'OTX Python {}/1.5.12'.format(project),
             'Content-Type': 'application/json'
         }
+        self.timeout = timeout
 
     def session(self):
         if self.request_session is None:
@@ -181,6 +182,7 @@ class OTXv2(object):
                 proxies=self.proxies,
                 verify=self.verify,
                 cert=self.cert,
+                timeout=self.timeout
             )
             return self.handle_response_errors(response).json()
         except requests.exceptions.RetryError:
@@ -201,6 +203,7 @@ class OTXv2(object):
             proxies=self.proxies,
             verify=self.verify,
             cert=self.cert,
+            timeout=self.timeout
         )
         return self.handle_response_errors(response).json()
 
@@ -222,6 +225,7 @@ class OTXv2(object):
             proxies=self.proxies,
             verify=self.verify,
             cert=self.cert,
+            timeout=self.timeout
         )
         return self.handle_response_errors(response).json()
 
