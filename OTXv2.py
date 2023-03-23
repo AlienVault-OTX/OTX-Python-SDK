@@ -88,6 +88,14 @@ class RetryError(Exception):
         return repr(self.value)
 
 
+class TimeoutError(Exception):
+    def __init__(self, value=None):
+        self.value = value or "TimeoutError"
+
+    def __str__(self):
+        return repr(self.value)
+
+
 class OTXv2(object):
     """
     Main class to interact with the AlienVault OTX API.
@@ -187,6 +195,8 @@ class OTXv2(object):
             return self.handle_response_errors(response).json()
         except requests.exceptions.RetryError:
             raise RetryError()
+        except requests.exceptions.Timeout:
+            raise TimeoutError()
 
     def patch(self, url, body, **kwargs):
         """
@@ -195,17 +205,19 @@ class OTXv2(object):
         :param body: HTTP Body to send in request
         :return: response as dict
         """
-
-        response = self.session().patch(
-            self.create_url(url, **kwargs),
-            data=json.dumps(body),
-            headers=self.headers,
-            proxies=self.proxies,
-            verify=self.verify,
-            cert=self.cert,
-            timeout=self.timeout
-        )
-        return self.handle_response_errors(response).json()
+        try:
+            response = self.session().patch(
+                self.create_url(url, **kwargs),
+                data=json.dumps(body),
+                headers=self.headers,
+                proxies=self.proxies,
+                verify=self.verify,
+                cert=self.cert,
+                timeout=self.timeout
+            )
+            return self.handle_response_errors(response).json()
+        except requests.exceptions.Timeout:
+            raise TimeoutError()
 
     def post(self, url, body=None, headers=None, files=None, **kwargs):
         """
@@ -216,18 +228,20 @@ class OTXv2(object):
         :param files: (optional) list of file tuples, if posting multipart form data
         :return: response as dict
         """
-
-        response = self.session().post(
-            self.create_url(url, **kwargs),
-            data=json.dumps(body) if body else None,
-            files=files,
-            headers=headers or self.headers,
-            proxies=self.proxies,
-            verify=self.verify,
-            cert=self.cert,
-            timeout=self.timeout
-        )
-        return self.handle_response_errors(response).json()
+        try:
+            response = self.session().post(
+                self.create_url(url, **kwargs),
+                data=json.dumps(body) if body else None,
+                files=files,
+                headers=headers or self.headers,
+                proxies=self.proxies,
+                verify=self.verify,
+                cert=self.cert,
+                timeout=self.timeout
+            )
+            return self.handle_response_errors(response).json()
+        except requests.exceptions.Timeout:
+            raise TimeoutError()
 
     def create_pulse(self, **kwargs):
         """
