@@ -361,6 +361,8 @@ class OTXv2(object):
             count += 1
             if max_page and count > max_page:
                 break
+            if max_items and item_count > max_items:
+                break
 
             if method == 'GET':
                 data = self.get(next_page_url)
