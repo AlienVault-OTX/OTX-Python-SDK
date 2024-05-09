@@ -46,14 +46,17 @@ otx.get_indicator_details_full(IndicatorTypes.DOMAIN, "google.com")
 Adding content to OTX:
 ```
 from OTXv2 import OTXv2
+
 otx = OTXv2("API_KEY")
-name = 'Test Pulse'
+name = "Test Pulse"
 indicators = [
-    {'indicator': '69.73.130.198', 'type': 'IPv4'},
-    {'indicator': 'aoldaily.com', 'type': 'Domain'}
+    {"indicator": "69.73.130.198", "type": "IPv4"},
+    {"indicator": "aoldaily.com", "type": "Domain"},
 ]
-response = otx.create_pulse(name=name ,public=True ,indicators=indicators ,tags=[] , references=[])
-print str(response)
+response = otx.create_pulse(
+    name=name, public=True, indicators=indicators, tags=[], references=[]
+)
+print(str(response))
 ```
 
 Additional Examples:
